@@ -101,8 +101,8 @@ const courseColorsStorageKey = currentUser ? `courseColors_${currentUser}` : 'co
   const [tasks, setTasks] = useState([])
   const [currentTab, setCurrentTab] = useState('dashboard')
   const [expandedTaskId, setExpandedTaskId] = useState(null)
-
   const [selectedDate, setSelectedDate] = useState(new Date())
+  const [calendarOpen, setCalendarOpen] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterCourse, setFilterCourse] = useState('ALL')
   const [filterPriority, setFilterPriority] = useState('ALL')
@@ -1146,76 +1146,121 @@ const estimatedMinutesLeft = totalEstimatedMinutes % 60
             </div>
           )}
           {/* CALENDAR TAB VIEW */}
-          {currentTab === 'calendar' && (
-            <div className="card card-container" style={{ marginTop: '10px' }}>
-              <h3>📅 Assignment Calendar</h3>
+{currentTab === 'calendar' && (
+  <div className="panel-card resizable-panel calendar-panel" style={{ marginTop: '10px' }}>
+    <div className="panel-header">
+      <h3>📅 Assignment Calendar</h3>
 
-              <Calendar
-                onChange={setSelectedDate}
-                value={selectedDate}
-                tileContent={({ date }) => {
-                const taskForDay = tasks.find(task =>
-                  Number(task.dueMonth) === date.getMonth() + 1 &&
-                  Number(task.dueDay) === date.getDate()
-                )
+      <button
+        type="button"
+        className="btn btn-secondary panel-mini-button"
+        onClick={() => setCalendarOpen(prev => !prev)}
+      >
+        {calendarOpen ? 'Minimize' : 'Open'}
+      </button>
+    </div>
 
-                return taskForDay ? (
-                  <div
-                    style={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: '50%',
-                      backgroundColor: getCourseColor(taskForDay.course),
-                      margin: '0 auto',
-                      marginTop: 2
-                    }}
-                  />
-                ) : null
-              }}
+    {calendarOpen && (
+      <>
+        <Calendar
+          onChange={setSelectedDate}
+          value={selectedDate}
+          tileContent={({ date }) => {
+            const taskForDay = tasks.find(task =>
+              Number(task.dueMonth) === date.getMonth() + 1 &&
+              Number(task.dueDay) === date.getDate()
+            )
+
+            return taskForDay ? (
+              <div
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  backgroundColor: getCourseColor(taskForDay.course),
+                  margin: '0 auto',
+                  marginTop: 2
+                }}
               />
+            ) : null
+          }}
+        />
 
-              <h4 style={{ marginTop: '20px' }}>
-                Assignments for {selectedDate.toDateString()}
-              </h4>
+        <h4 style={{ marginTop: '20px' }}>
+          Assignments for {selectedDate.toDateString()}
+        </h4>
 
-              {tasks.filter(task =>
+        {tasks.filter(task =>
+          Number(task.dueMonth) === selectedDate.getMonth() + 1 &&
+          Number(task.dueDay) === selectedDate.getDate()
+        ).length === 0 ? (
+          <p className="placeholder-text">No assignments due on this day.</p>
+        ) : (
+          <ul className="task-list" style={{ paddingLeft: 0, listStyle: 'none' }}>
+            {tasks
+              .filter(task =>
                 Number(task.dueMonth) === selectedDate.getMonth() + 1 &&
                 Number(task.dueDay) === selectedDate.getDate()
-              ).length === 0 ? (
-                <p className="placeholder-text">No assignments due on this day.</p>
-              ) : (
-                <ul className="task-list" style={{ paddingLeft: 0, listStyle: 'none' }}>
-                  {tasks
-                    .filter(task =>
-                      Number(task.dueMonth) === selectedDate.getMonth() + 1 &&
-                      Number(task.dueDay) === selectedDate.getDate()
-                    )
-                    .map(task => (
-                      <li key={task.id} className="task-card">
-                        <div>
-                          <strong>{task.title}</strong> —{' '}
-                          <span
-                            className="course-name"
-                            style={{
-                              backgroundColor: getCourseColor(task.course),
-                              color: getTextColorForCourse(task.course),
-                              padding: '4px 8px',
-                              borderRadius: '999px',
-                              fontWeight: '600'
-                            }}
-                          >
-                            {task.course}
-                          </span>
-                          <div className="task-details">
-                            {formatTaskDetails(task)}
-                          </div>
-                        </div>
-                      </li>
-                    ))}
-                </ul>
-              )}
-            </div>
-          )}
+              )
+              .map(task => (
+                <li
+                  key={task.id}
+                  className={`task-card calendar-task-card${expandedTaskId === task.id ? ' expanded' : ''}`}
+                  onClick={() => toggleTaskExpansion(task.id)}
+                >
+                  <div>
+                    <strong>{task.title}</strong> —{' '}
+                    <span
+                      className="course-name"
+                      style={{
+                        backgroundColor: getCourseColor(task.course),
+                        color: getTextColorForCourse(task.course),
+                        padding: '4px 8px',
+                        borderRadius: '999px',
+                        fontWeight: '600'
+                      }}
+                    >
+                      {task.course}
+                    </span>
+
+                    <div className="task-details">
+                      {formatTaskDetails(task)}
+                    </div>
+
+                    <p className="hint-text" style={{ marginTop: '8px', fontSize: '13px' }}>
+                      Click to view or edit notes
+                    </p>
+                  </div>
+
+                  {expandedTaskId === task.id && (
+                    <div
+                      className="task-notes-panel"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <label
+                        htmlFor={`calendar-notes-${task.id}`}
+                        className="task-notes-label"
+                      >
+                        Notes
+                      </label>
+
+                      <textarea
+                        id={`calendar-notes-${task.id}`}
+                        value={task.notes || ''}
+                        onChange={(e) => handleNoteChange(task.id, e.target.value)}
+                        placeholder="Type notes for this assignment..."
+                        className="task-note-input"
+                      />
+                    </div>
+                  )}
+                </li>
+              ))}
+          </ul>
+        )}
+      </>
+    )}
+  </div>
+)}
           {/* SIGN IN PROFILES TAB VIEW */}
           {currentTab === 'signin' && (
             <div className="card card-container" style={{ marginTop: '10px' }}>
