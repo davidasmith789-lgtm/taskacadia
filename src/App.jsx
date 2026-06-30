@@ -59,13 +59,14 @@ function App() {
   const courseStorageKey = currentUser ? `courses_${currentUser}` : 'courses_guest'
 
   // --- DYNAMIC INTEGRATED ROSTER TRACKING ---
+  // Added 'Other' as a permanent default option here
   const [courses, setCourses] = useState(() => {
     try {
       const storedCourses = localStorage.getItem(courseStorageKey)
-      return storedCourses ? JSON.parse(storedCourses) : ['AP Stat', 'British Literature', 'Calculus H', 'APES']
+      return storedCourses ? JSON.parse(storedCourses) : ['AP Stat', 'British Literature', 'Calculus H', 'APES', 'Other']
     } catch (error) {
       console.error('Error reading courses from localStorage:', error)
-      return ['AP Stat', 'British Literature', 'Calculus H', 'APES']
+      return ['AP Stat', 'British Literature', 'Calculus H', 'APES', 'Other']
     }
   })
 
@@ -123,17 +124,18 @@ function App() {
   }
 
   // Profile data reloading pipeline
+  // Added 'Other' as a permanent default option here as well
   useEffect(() => {
     try {
       const rawTasks = localStorage.getItem(currentStorageKey)
       setTasks(rawTasks ? JSON.parse(rawTasks) : [])
 
       const rawCourses = localStorage.getItem(courseStorageKey)
-      setCourses(rawCourses ? JSON.parse(rawCourses) : ['AP Stat', 'British Literature', 'Calculus H', 'APES'])
+      setCourses(rawCourses ? JSON.parse(rawCourses) : ['AP Stat', 'British Literature', 'Calculus H', 'APES', 'Other'])
     } catch (error) {
       console.error('Failed to load user data from localStorage:', error)
       setTasks([])
-      setCourses(['AP Stat', 'British Literature', 'Calculus H', 'APES'])
+      setCourses(['AP Stat', 'British Literature', 'Calculus H', 'APES', 'Other'])
     }
     setIsCustomCourse(false)
     setCustomCourseName('')
