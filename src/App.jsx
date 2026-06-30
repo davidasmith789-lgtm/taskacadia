@@ -110,7 +110,8 @@ const courseColorsStorageKey = currentUser ? `courseColors_${currentUser}` : 'co
   const [editingTaskId, setEditingTaskId] = useState(null)
   const [editingTask, setEditingTask] = useState(null)
   const [filterRepeat, setFilterRepeat] = useState('ALL')
-  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [addAssignmentOpen, setAddAssignmentOpen] = useState(true)
+  const [courseColorsOpen, setCourseColorsOpen] = useState(true)
 
   // --- DISPLAY PALETTE SCHEMES ---
   const [theme, setTheme] = useState(() => {
@@ -766,10 +767,21 @@ const estimatedMinutesLeft = totalEstimatedMinutes % 60
       </div>
     </div>
 
-    <div className="dashboard-grid">
-      <div className="card card-container">
-        <h3>➕ Add New Assignment</h3>
-            <form onSubmit={handleAddTask} className="card-form">
+    <div className="card card-container">
+  <div className="assignment-header-row">
+  <h3>➕ Add New Assignment</h3>
+
+  <button
+    type="button"
+    className="btn btn-secondary assignment-toggle-button"
+    onClick={() => setAddAssignmentOpen(prev => !prev)}
+  >
+    {addAssignmentOpen ? 'Minimize' : 'Open'}
+  </button>
+</div>
+
+  {addAssignmentOpen && (
+    <form onSubmit={handleAddTask} className="card-form">
               
               <label>Assignment Name:</label>
               <input 
@@ -865,11 +877,25 @@ const estimatedMinutesLeft = totalEstimatedMinutes % 60
                 Add Assignment
               </button>
             </form>
-            <div style={{ marginTop: '25px' }}>
+  )}
+            <div className="course-colors-section" style={{ marginTop: '25px' }}>
+            <div className="course-colors-header-row">
               <h3>🎨 Course Colors</h3>
-              <p className="hint-text">
-                Customize course colors or delete courses you no longer need. Assignments from deleted courses move to "Other".
-              </p>
+
+              <button
+                type="button"
+                className="btn btn-secondary course-colors-toggle-button"
+                onClick={() => setCourseColorsOpen(prev => !prev)}
+              >
+                {courseColorsOpen ? 'Minimize' : 'Open'}
+              </button>
+            </div>
+
+            {courseColorsOpen && (
+              <>
+                <p className="hint-text">
+                  Customize course colors or delete courses you no longer need. Assignments from deleted courses move to "Other".
+                </p>
 
               {courses.map(course => (
                 <div
@@ -920,11 +946,12 @@ const estimatedMinutesLeft = totalEstimatedMinutes % 60
                     </button>
                   </div>
                 </div>
-              ))}
+                    ))}
+                </>
+              )}
           </div>
       </div>
     </div>
-  </div>
 )}
 
         {/* --- MAIN DISPLAY CONTROLLERS --- */}
