@@ -256,6 +256,52 @@ const getTextColorForCourse = (course) => {
     return updated
   })
 }
+    const handleDeleteCourse = (courseToDelete) => {
+      if (courseToDelete === 'Other') {
+        alert('The "Other" course cannot be deleted.')
+        return
+      }
+
+      const confirmDelete = window.confirm(
+        `Delete "${courseToDelete}"? Any assignments using this course will be moved to "Other".`
+      )
+
+      if (!confirmDelete) return
+
+      const updatedCourses = courses.filter(course => course !== courseToDelete)
+
+      setCourses(updatedCourses)
+
+      try {
+        localStorage.setItem(courseStorageKey, JSON.stringify(updatedCourses))
+      } catch (error) {
+        console.error('Failed to save courses after deleting course:', error)
+      }
+
+      setCourseColors(prev => {
+        const updatedColors = { ...prev }
+        delete updatedColors[courseToDelete]
+
+        try {
+          localStorage.setItem(courseColorsStorageKey, JSON.stringify(updatedColors))
+        } catch (error) {
+          console.error('Failed to save course colors after deleting course:', error)
+        }
+
+        return updatedColors
+      })
+
+      setTasks(prev => {
+        const updatedTasks = prev.map(task =>
+          task.course === courseToDelete
+            ? { ...task, course: 'Other' }
+            : task
+        )
+
+        saveTasksForCurrentUser(updatedTasks)
+        return updatedTasks
+      })
+    }
   const saveTasksForCurrentUser = (updated) => {
     try { localStorage.setItem(currentStorageKey, JSON.stringify(updated)) } catch (error) {
       console.error('Failed to save tasks to localStorage:', error)
@@ -529,38 +575,61 @@ const handleEditCancel = () => {
             </form>
             <div style={{ marginTop: '25px' }}>
               <h3>🎨 Course Colors</h3>
+              <p className="hint-text">
+                Customize course colors or delete courses you no longer need. Assignments from deleted courses move to "Other".
+              </p>
 
-            {courses.map(course => (
-              <div
-                key={course}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '12px',
-                  marginBottom: '10px'
-                }}
-              >
-                <span
+              {courses.map(course => (
+                <div
+                  key={course}
                   style={{
-                    backgroundColor: getCourseColor(course),
-                    color: getTextColorForCourse(course),
-                    padding: '5px 10px',
-                    borderRadius: '999px',
-                    fontWeight: '600'
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    marginBottom: '10px',
+                    padding: '8px',
+                    borderRadius: '8px',
+                    backgroundColor: 'var(--card-bg)'
                   }}
                 >
-                  {course}
-                </span>
+                  <span
+                    style={{
+                      backgroundColor: getCourseColor(course),
+                      color: getTextColorForCourse(course),
+                      padding: '5px 10px',
+                      borderRadius: '999px',
+                      fontWeight: '600'
+                    }}
+                  >
+                    {course}
+                  </span>
 
-                <input
-                  type="color"
-                  value={getCourseColor(course)}
-                  onChange={(e) => handleCourseColorChange(course, e.target.value)}
-                />
-              </div>
-            ))}
-          </div>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <input
+                      type="color"
+                      value={getCourseColor(course)}
+                      onChange={(e) => handleCourseColorChange(course, e.target.value)}
+                    />
+
+                    <button
+                      type="button"
+                      className="btn btn-danger"
+                      disabled={course === 'Other'}
+                      onClick={() => handleDeleteCourse(course)}
+                      style={{
+                        padding: '5px 10px',
+                        borderRadius: '4px',
+                        cursor: course === 'Other' ? 'not-allowed' : 'pointer',
+                        opacity: course === 'Other' ? 0.5 : 1
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
