@@ -663,17 +663,44 @@ const resetFilters = () => {
     </button>
   </div>
 )
-  return (
-    <div className={`App ${theme}`}>
-      <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto', fontFamily: 'sans-serif' }}>
-        <h1 className="app-title">🎓 TaskAcadia Dashboard</h1>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <p>Welcome. Track your workload here.</p>
-          <div style={{ fontSize: '14px' }}>{currentUser ? `Signed in as ${currentUser}` : 'Not signed in'}</div>
-        </div>
+const activeTasksCount = tasks.filter(task => !task.isCompleted).length
+const completedTasksCount = tasks.filter(task => task.isCompleted).length
+
+const overdueTasksCount = tasks.filter(task =>
+  !task.isCompleted &&
+  getDueDateBucket(task.dueMonth, task.dueDay) === 'Overdue 🚨'
+).length
+
+const dueTodayCount = tasks.filter(task =>
+  !task.isCompleted &&
+  getDueDateBucket(task.dueMonth, task.dueDay) === 'Due Today ⏰'
+).length
+
+const totalEstimatedMinutes = tasks
+  .filter(task => !task.isCompleted)
+  .reduce((total, task) => total + (Number(task.estimatedMinutes) || 0), 0)
+
+const estimatedHours = Math.floor(totalEstimatedMinutes / 60)
+const estimatedMinutesLeft = totalEstimatedMinutes % 60
+ return (
+  <div className={`App ${theme}`}>
+    <div className="app-shell">
+        <header className="hero-card">
+  <div>
+    <p className="eyebrow">Student Productivity Hub</p>
+    <h1 className="app-title">🎓 TaskAcadia</h1>
+    <p className="hero-subtitle">
+      Organize assignments, track deadlines, manage courses, and plan your workload.
+    </p>
+  </div>
+
+  <div className="user-pill">
+    {currentUser ? `Signed in as ${currentUser}` : 'Guest Mode'}
+  </div>
+</header>
 
         {/* Navigation Tab Actions */}
-        <div className="tab-row" style={{ display: 'flex', gap: '8px', marginTop: '12px', marginBottom: '12px' }}>
+        <div className="tab-row">
           <button
             className={`tab-button ${currentTab === 'dashboard' ? 'active' : ''}`}
             onClick={() => setCurrentTab('dashboard')}
@@ -722,8 +749,36 @@ const resetFilters = () => {
 
         {/* --- FORM SECTION --- */}
         {currentTab === 'dashboard' && (
-          <div className="card card-container">
-            <h3>➕ Add New Assignment</h3>
+  <div>
+    <div className="stats-grid">
+      <div className="stat-card">
+        <span className="stat-label">Active</span>
+        <strong>{activeTasksCount}</strong>
+        <p>Assignments left</p>
+      </div>
+
+      <div className="stat-card">
+        <span className="stat-label">Due Today</span>
+        <strong>{dueTodayCount}</strong>
+        <p>Need attention</p>
+      </div>
+
+      <div className="stat-card">
+        <span className="stat-label">Overdue</span>
+        <strong>{overdueTasksCount}</strong>
+        <p>Past deadline</p>
+      </div>
+
+      <div className="stat-card">
+        <span className="stat-label">Workload</span>
+        <strong>{estimatedHours}h {estimatedMinutesLeft}m</strong>
+        <p>Estimated remaining</p>
+      </div>
+    </div>
+
+    <div className="dashboard-grid">
+      <div className="card card-container">
+        <h3>➕ Add New Assignment</h3>
             <form onSubmit={handleAddTask} className="card-form">
               
               <label>Assignment Name:</label>
@@ -876,9 +931,11 @@ const resetFilters = () => {
                   </div>
                 </div>
               ))}
-            </div>
           </div>
-        )}
+      </div>
+    </div>
+  </div>
+)}
 
         {/* --- MAIN DISPLAY CONTROLLERS --- */}
         <div>
