@@ -913,3 +913,350 @@ button:disabled {
   border-radius: 10px;
   white-space: nowrap;
 }
+
+/* ============================
+   Professional Edit Modal
+   ============================ */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.72);
+  backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+  z-index: 9999;
+}
+
+.edit-modal {
+  width: min(920px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--card-bg);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  border-radius: 26px;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.45);
+  padding: 24px;
+}
+
+.edit-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.edit-modal-header h2 {
+  margin: 0;
+  font-size: clamp(24px, 3vw, 34px);
+}
+
+.modal-eyebrow {
+  color: var(--muted-text);
+}
+
+.modal-close-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-color);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.modal-close-button:hover {
+  background: rgba(239, 68, 68, 0.16);
+  color: #ef4444;
+}
+
+.edit-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.edit-field {
+  display: grid;
+  gap: 6px;
+}
+
+.edit-field-full {
+  grid-column: 1 / -1;
+}
+
+.edit-field label,
+.edit-checkbox {
+  font-weight: 800;
+  color: var(--text-color);
+}
+
+.edit-field textarea {
+  min-height: 130px;
+}
+
+.edit-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border-color);
+  background: rgba(99, 102, 241, 0.06);
+}
+
+.edit-checkbox input {
+  width: auto;
+}
+
+.edit-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+@media (max-width: 720px) {
+  .edit-modal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .edit-modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .edit-modal-actions .btn {
+    width: 100%;
+  }
+}
+/* Make edit modal title follow theme text color */
+.edit-modal-header h2 {
+  color: var(--text-color);
+}
+/* Better secondary/edit button colors */
+.btn-secondary {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.btn-secondary:hover {
+  background: #334155;
+  color: #ffffff;
+}
+
+/* Keep secondary buttons readable in dark mode */
+html[data-theme='dark'] .btn-secondary {
+  background: #334155;
+  color: #ffffff;
+}
+
+html[data-theme='dark'] .btn-secondary:hover {
+  background: #475569;
+  color: #ffffff;
+}
+
+/* ============================
+   Better Edit Modal Field Layout
+   ============================ */
+
+.edit-modal-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.edit-field-full {
+  width: 100%;
+}
+
+.edit-details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 18px;
+  background: rgba(99, 102, 241, 0.06);
+}
+
+html[data-theme='dark'] .edit-details-grid {
+  background: rgba(99, 102, 241, 0.10);
+}
+
+.edit-field {
+  display: grid;
+  gap: 6px;
+}
+
+.edit-field label,
+.edit-checkbox {
+  font-weight: 800;
+  color: var(--text-color);
+}
+
+.edit-field input,
+.edit-field select,
+.edit-field textarea {
+  width: 100%;
+}
+
+.edit-field textarea {
+  min-height: 150px;
+}
+
+.edit-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border-color);
+  background: rgba(99, 102, 241, 0.06);
+}
+
+.edit-checkbox input {
+  width: auto;
+}
+
+@media (max-width: 720px) {
+  .edit-details-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================
+   Edit Modal Side-by-Side Layout
+   ============================ */
+
+.edit-main-layout {
+  display: grid;
+  grid-template-columns: minmax(360px, 0.95fr) minmax(320px, 1.05fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.edit-main-layout .edit-details-grid {
+  height: 100%;
+}
+
+.edit-notes-side {
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 18px;
+  background: rgba(99, 102, 241, 0.06);
+}
+
+html[data-theme='dark'] .edit-notes-side {
+  background: rgba(99, 102, 241, 0.10);
+}
+
+.edit-notes-side textarea {
+  min-height: 100%;
+  height: calc(100% - 34px);
+  resize: vertical;
+}
+
+@media (max-width: 900px) {
+  .edit-main-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .edit-notes-side textarea {
+    min-height: 180px;
+    height: auto;
+  }
+}
+
+/* ============================
+   Edit Modal Final Layout Polish
+   ============================ */
+
+/* Centers the details + notes section inside the popup */
+.edit-main-layout {
+  display: grid;
+  grid-template-columns: minmax(340px, 440px) minmax(340px, 440px);
+  gap: 26px;
+  justify-content: center;
+  align-items: stretch;
+  width: 100%;
+  margin: 22px auto;
+}
+
+/* Makes both boxes feel evenly sized */
+.edit-details-grid,
+.edit-notes-side {
+  width: 100%;
+  min-height: 440px;
+}
+
+/* Makes the notes panel use its space better */
+.edit-notes-side {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Bigger notes box */
+.edit-notes-side textarea {
+  flex: 1;
+  min-height: 330px;
+  height: 100%;
+  resize: vertical;
+}
+
+/* Keeps the assignment name centered nicely above */
+.edit-modal-grid > .edit-field-full:first-child {
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+/* On smaller screens, stack the sections */
+@media (max-width: 1000px) {
+  .edit-main-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .edit-details-grid,
+  .edit-notes-side {
+    min-height: auto;
+  }
+
+  .edit-notes-side textarea {
+    min-height: 240px;
+  }
+}
+
+
+/* Force details + notes section to span and center correctly */
+.edit-main-layout {
+  grid-column: 1 / -1;
+  width: min(100%, 980px);
+  margin: 22px auto;
+  display: grid;
+  grid-template-columns: minmax(330px, 450px) minmax(360px, 480px);
+  gap: 24px;
+  justify-content: center;
+  align-items: stretch;
+}
+
+/* Prevent either panel from overflowing sideways */
+.edit-details-grid,
+.edit-notes-side {
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+/* Keep the notes box large */
+.edit-notes-side textarea {
+  min-height: 360px;
+  height: 100%;
+  resize: vertical;
+}
