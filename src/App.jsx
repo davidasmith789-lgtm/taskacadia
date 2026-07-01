@@ -110,6 +110,7 @@ const courseColorsStorageKey = currentUser ? `courseColors_${currentUser}` : 'co
   const [editingTaskId, setEditingTaskId] = useState(null)
   const [editingTask, setEditingTask] = useState(null)
   const [filterRepeat, setFilterRepeat] = useState('ALL')
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const [addAssignmentOpen, setAddAssignmentOpen] = useState(true)
   const [courseColorsOpen, setCourseColorsOpen] = useState(true)
 
@@ -432,15 +433,45 @@ const getTextColorForCourse = (course) => {
 
   const handleEditStart = (task) => {
   setEditingTaskId(task.id)
-  setEditingTask({ ...task })
+  setEditingTask({
+    ...task,
+    title: task.title || '',
+    repeat: task.repeat || 'NONE',
+    notes: task.notes || '',
+    estimatedMinutes: task.estimatedMinutes || '',
+    dueHour: task.dueHour || '11',
+    dueAmPm: task.dueAmPm || 'PM'
+  })
 }
 
-const handleEditSave = () => {
+const handleEditFieldChange = (field, value) => {
+  setEditingTask(prev => ({
+    ...prev,
+    [field]: value
+  }))
+}
+
+  const handleEditSave = () => {
+  if (!editingTask) return
+
+  const cleanedTitle = editingTask.title.trim()
+  const cleanedCourse = editingTask.course || 'Other'
+
+  if (!cleanedTitle) {
+    alert('Assignment name cannot be empty.')
+    return
+  }
+
+  const updatedTask = {
+    ...editingTask,
+    title: cleanedTitle,
+    course: cleanedCourse,
+    repeat: editingTask.repeat || 'NONE'
+  }
+
   setTasks(prev => {
     const updated = prev.map(task =>
-      task.id === editingTaskId
-        ? editingTask
-        : task
+      task.id === editingTaskId ? updatedTask : task
     )
 
     saveTasksForCurrentUser(updated)
@@ -451,10 +482,10 @@ const handleEditSave = () => {
   setEditingTask(null)
 }
 
-const handleEditCancel = () => {
-  setEditingTaskId(null)
-  setEditingTask(null)
-}
+  const handleEditCancel = () => {
+    setEditingTaskId(null)
+    setEditingTask(null)
+  }
 
   const handleSignIn = (e) => {
     e.preventDefault()
@@ -986,20 +1017,7 @@ const estimatedMinutesLeft = totalEstimatedMinutes % 60
                               onClick={() => toggleTaskExpansion(task.id)}
                             >
                               <div>
-                                {editingTaskId === task.id ? (
-                                  <input
-                                    value={editingTask.title}
-                                    onChange={(e) =>
-                                      setEditingTask({
-                                        ...editingTask,
-                                        title: e.target.value
-                                      })
-                                    }
-                                    onClick={(e) => e.stopPropagation()}
-                                  />
-                                ) : (
-                                  <strong>{task.title}</strong>
-                                )}
+                                <strong>{task.title}</strong>
                                 <span
                                   className="course-name"
                                   style={{
@@ -1018,66 +1036,39 @@ const estimatedMinutesLeft = totalEstimatedMinutes % 60
                               </div>
                               
                               <div className="task-actions">
-                              {editingTaskId === task.id ? (
-                                <>
-                                  <button
-                                    className="btn btn-primary"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      handleEditSave()
-                                    }}
-                                    style={{ padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}
-                                  >
-                                    Save 💾
-                                  </button>
+                                <button
+                                  className="btn btn-primary"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleComplete(task.id)
+                                  }}
+                                  style={{ padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}
+                                >
+                                  Complete ✅
+                                </button>
 
-                                  <button
-                                    className="btn btn-warning"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      handleEditCancel()
-                                    }}
-                                    style={{ padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}
-                                  >
-                                    Cancel
-                                  </button>
-                                </>
-                              ) : (
-                                <>
-                                  <button
-                                    className="btn btn-primary"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      handleComplete(task.id)
-                                    }}
-                                    style={{ padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}
-                                  >
-                                    Complete ✅
-                                  </button>
+                                <button
+                                  className="btn btn-secondary"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleEditStart(task)
+                                  }}
+                                  style={{ padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}
+                                >
+                                  ✏️ Edit
+                                </button>
 
-                                  <button
-                                    className="btn btn-secondary"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      handleEditStart(task)
-                                    }}
-                                  >
-                                    ✏️ Edit
-                                  </button>
-
-                                  <button
-                                    className="btn btn-danger"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      handleDelete(task.id)
-                                    }}
-                                    style={{ padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}
-                                  >
-                                    Delete
-                                  </button>
-                                </>
-                              )}
-                            </div>
+                                <button
+                                  className="btn btn-danger"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDelete(task.id)
+                                  }}
+                                  style={{ padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}
+                                >
+                                  Delete
+                                </button>
+                              </div>
 
                               {expandedTaskId === task.id && (
                                 <div className="task-notes-panel" onClick={(e) => e.stopPropagation()}>
@@ -1145,6 +1136,18 @@ const estimatedMinutesLeft = totalEstimatedMinutes % 60
                         >
                           Mark Undone
                         </button>
+
+                        <button
+                          className="btn btn-secondary"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleEditStart(task)
+                          }}
+                          style={{ padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}
+                        >
+                          ✏️ Edit
+                        </button>
+
                         <button 
                           className="btn btn-danger"
                           onClick={(e) => { e.stopPropagation(); handleDelete(task.id) }}
@@ -1257,6 +1260,18 @@ const estimatedMinutesLeft = totalEstimatedMinutes % 60
                     <p className="hint-text" style={{ marginTop: '8px', fontSize: '13px' }}>
                       Click to view or edit notes
                     </p>
+                    <div className="task-actions">
+                    <button
+                      className="btn btn-secondary"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleEditStart(task)
+                      }}
+                      style={{ padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}
+                    >
+                      ✏️ Edit Assignment
+                    </button>
+                  </div>
                   </div>
 
                   {expandedTaskId === task.id && (
@@ -1301,7 +1316,179 @@ const estimatedMinutesLeft = totalEstimatedMinutes % 60
           )}
         </div>
       </div>
+      {editingTask && (
+  <div className="modal-backdrop" onClick={handleEditCancel}>
+    <div className="edit-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="edit-modal-header">
+        <div>
+          <p className="eyebrow modal-eyebrow">Edit Assignment</p>
+          <h2>✏️ {editingTask.title || 'Untitled Assignment'}</h2>
+        </div>
+
+        <button
+          type="button"
+          className="modal-close-button"
+          onClick={handleEditCancel}
+        >
+          ×
+        </button>
+      </div>
+
+      <div className="edit-modal-grid">
+  <div className="edit-field edit-field-full">
+    <label>Assignment Name</label>
+    <input
+      type="text"
+      value={editingTask?.title || ''}
+      onChange={(e) => handleEditFieldChange('title', e.target.value)}
+      placeholder="Assignment name"
+    />
+  </div>
+
+ <div className="edit-main-layout">
+  <div className="edit-details-grid">
+    <div className="edit-field">
+      <label>Course</label>
+      <select
+        value={editingTask.course || 'Other'}
+        onChange={(e) => handleEditFieldChange('course', e.target.value)}
+      >
+        {courses.map(course => (
+          <option key={course} value={course}>
+            {course}
+          </option>
+        ))}
+      </select>
     </div>
+
+    <div className="edit-field">
+      <label>Priority</label>
+      <select
+        value={editingTask.priority || 'MED'}
+        onChange={(e) => handleEditFieldChange('priority', e.target.value)}
+      >
+        <option value="LOW">Low</option>
+        <option value="MED">Medium</option>
+        <option value="HIGH">High</option>
+      </select>
+    </div>
+
+    <div className="edit-field">
+      <label>Due Month</label>
+      <select
+        value={editingTask.dueMonth || ''}
+        onChange={(e) => handleEditFieldChange('dueMonth', e.target.value)}
+      >
+        <option value="">No month</option>
+        {monthNames.map((month, index) => (
+          <option key={month} value={String(index + 1).padStart(2, '0')}>
+            {month}
+          </option>
+        ))}
+      </select>
+    </div>
+
+    <div className="edit-field">
+      <label>Due Day</label>
+      <select
+        value={editingTask.dueDay || ''}
+        onChange={(e) => handleEditFieldChange('dueDay', e.target.value)}
+      >
+        <option value="">No day</option>
+        {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+          <option key={day} value={String(day).padStart(2, '0')}>
+            {day}
+          </option>
+        ))}
+      </select>
+    </div>
+
+    <div className="edit-field">
+      <label>Due Hour</label>
+      <input
+        type="number"
+        min="1"
+        max="12"
+        value={editingTask.dueHour || '11'}
+        onChange={(e) => handleEditFieldChange('dueHour', e.target.value)}
+      />
+    </div>
+
+    <div className="edit-field">
+      <label>AM / PM</label>
+      <select
+        value={editingTask.dueAmPm || 'PM'}
+        onChange={(e) => handleEditFieldChange('dueAmPm', e.target.value)}
+      >
+        <option value="AM">AM</option>
+        <option value="PM">PM</option>
+      </select>
+    </div>
+
+    <div className="edit-field">
+      <label>Estimated Minutes</label>
+      <input
+        type="number"
+        min="0"
+        value={editingTask.estimatedMinutes || ''}
+        onChange={(e) => handleEditFieldChange('estimatedMinutes', e.target.value)}
+      />
+    </div>
+
+    <div className="edit-field">
+      <label>Repeat</label>
+      <select
+        value={editingTask.repeat || 'NONE'}
+        onChange={(e) => handleEditFieldChange('repeat', e.target.value)}
+      >
+        <option value="NONE">Does not repeat</option>
+        <option value="DAILY">Daily</option>
+        <option value="WEEKLY">Weekly</option>
+        <option value="MONTHLY">Monthly</option>
+      </select>
+    </div>
+  </div>
+
+  <div className="edit-field edit-notes-side">
+    <label>Notes</label>
+    <textarea
+      value={editingTask.notes || ''}
+      onChange={(e) => handleEditFieldChange('notes', e.target.value)}
+      placeholder="Add notes, reminders, links, rubric details, or study instructions..."
+    />
+  </div>
+</div>
+  <label className="edit-checkbox edit-field-full">
+    <input
+      type="checkbox"
+      checked={Boolean(editingTask.isCompleted)}
+      onChange={(e) => handleEditFieldChange('isCompleted', e.target.checked)}
+    />
+    Mark as completed
+  </label>
+</div>
+      <div className="edit-modal-actions">
+        <button
+          type="button"
+          className="btn btn-danger"
+          onClick={handleEditCancel}
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={handleEditSave}
+        >
+          Save Changes
+        </button>
+        </div>
+      </div>
+    </div>
+)}
+    </div>
+    
   )
 }
 
