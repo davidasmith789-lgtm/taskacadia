@@ -620,6 +620,21 @@ const resetFilters = () => {
   setFilterRepeat('ALL')
 }
 
+const handleRecommendedTaskClick = (taskId) => {
+  resetFilters()
+  setExpandedTaskId(taskId)
+  setCurrentTab('todo')
+
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
+      document.getElementById(`todo-task-${taskId}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      })
+    })
+  })
+}
+
 const renderFilterToggle = () => (
   <button
     type="button"
@@ -851,34 +866,41 @@ const estimatedMinutesLeft = totalEstimatedMinutes % 60
 
             return (
               <li key={task.id} className="recommended-plan-item">
-                <span className="recommended-plan-rank" aria-hidden="true">
-                  {index + 1}
-                </span>
+                <button
+                  type="button"
+                  className="recommended-plan-button"
+                  onClick={() => handleRecommendedTaskClick(task.id)}
+                  aria-label={`Open ${task.title} in the To Do list`}
+                >
+                  <span className="recommended-plan-rank" aria-hidden="true">
+                    {index + 1}
+                  </span>
 
-                <div className="recommended-plan-content">
-                  <div className="recommended-plan-title-row">
-                    <strong>{task.title}</strong>
-                    <span
-                      className="recommended-plan-course"
-                      style={{
-                        backgroundColor: getCourseColor(task.course),
-                        color: getTextColorForCourse(task.course)
-                      }}
-                    >
-                      {task.course}
-                    </span>
-                  </div>
+                  <div className="recommended-plan-content">
+                    <div className="recommended-plan-title-row">
+                      <strong>{task.title}</strong>
+                      <span
+                        className="recommended-plan-course"
+                        style={{
+                          backgroundColor: getCourseColor(task.course),
+                          color: getTextColorForCourse(task.course)
+                        }}
+                      >
+                        {task.course}
+                      </span>
+                    </div>
 
-                  <div className="recommended-plan-details">
-                    <span>{getDueDateBucket(task.dueMonth, task.dueDay)}</span>
-                    <span>{task.priority || 'No priority'} priority</span>
-                    <span>
-                      {Number.isFinite(estimatedMinutes)
-                        ? `${estimatedMinutes} min`
-                        : 'No time estimate'}
-                    </span>
+                    <div className="recommended-plan-details">
+                      <span>{getDueDateBucket(task.dueMonth, task.dueDay)}</span>
+                      <span>{task.priority || 'No priority'} priority</span>
+                      <span>
+                        {Number.isFinite(estimatedMinutes)
+                          ? `${estimatedMinutes} min`
+                          : 'No time estimate'}
+                      </span>
+                    </div>
                   </div>
-                </div>
+                </button>
               </li>
             )
           })}
@@ -1101,6 +1123,7 @@ const estimatedMinutesLeft = totalEstimatedMinutes % 60
                           {tasksInBucket.map(task => (
                             <li
                               key={task.id}
+                              id={`todo-task-${task.id}`}
                               className={`task-card${task.priority === 'HIGH' ? ' task-card-high' : ''}${expandedTaskId === task.id ? ' expanded' : ''}`}
                               onClick={() => toggleTaskExpansion(task.id)}
                             >
