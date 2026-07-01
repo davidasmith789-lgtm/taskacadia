@@ -1260,3 +1260,142 @@ html[data-theme='dark'] .edit-notes-side {
   height: 100%;
   resize: vertical;
 }
+
+/* ============================
+   Recommended Plan of Attack
+   ============================ */
+
+.recommended-plan-card {
+  margin-bottom: 18px;
+  padding: 24px;
+  border: 1px solid var(--border-color);
+  border-radius: 22px;
+  background: var(--card-bg);
+  color: var(--text-color);
+  box-shadow: var(--shadow-card);
+}
+
+.recommended-plan-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.recommended-plan-header h2 {
+  margin: 0;
+  color: var(--text-color);
+  font-size: clamp(22px, 3vw, 30px);
+}
+
+.recommended-plan-eyebrow {
+  margin: 0 0 6px;
+  color: var(--muted-text);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.recommended-plan-count {
+  flex: 0 0 auto;
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.12);
+  color: #4f46e5;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.recommended-plan-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recommended-plan-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  background: rgba(99, 102, 241, 0.05);
+}
+
+.recommended-plan-rank {
+  display: grid;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent-gradient);
+  color: #ffffff;
+  font-weight: 900;
+}
+
+.recommended-plan-content {
+  min-width: 0;
+  flex: 1;
+}
+
+.recommended-plan-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.recommended-plan-title-row strong {
+  overflow-wrap: anywhere;
+}
+
+.recommended-plan-course {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.recommended-plan-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 7px;
+  color: var(--muted-text);
+  font-size: 13px;
+}
+
+.recommended-plan-empty {
+  margin: 0;
+  padding: 18px;
+  border: 1px dashed var(--border-color);
+  border-radius: 16px;
+  color: var(--muted-text);
+  text-align: center;
+}
+
+html[data-theme='dark'] .recommended-plan-count {
+  color: #c7d2fe;
+}
+
+@media (max-width: 560px) {
+  .recommended-plan-card {
+    padding: 18px;
+  }
+
+  .recommended-plan-header,
+  .recommended-plan-title-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .recommended-plan-item {
+    align-items: flex-start;
+  }
+}
