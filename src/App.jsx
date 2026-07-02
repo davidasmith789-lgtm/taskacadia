@@ -3,6 +3,12 @@ import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import "./App.css";
 
+const DEFAULT_USER_SETTINGS = {
+  showPriority: true,
+  showRepeat: true,
+  showEstimatedMinutes: true,
+};
+
 /**
  * TASKACADIA APPLICATION GUIDE
  *
@@ -19,7 +25,8 @@ import "./App.css";
  * The main task object has this general shape:
  * {
  *   id, title, course, dueMonth, dueDay, dueHour, dueAmPm,
- *   estimatedMinutes, priority, repeat, isCompleted, status, notes, subtasks
+ *   estimatedMinutes, priority, repeat, isCompleted, status, notes, subtasks,
+ *   isArchived, archivedAt, isDeleted, deletedAt
  * }
  *
  * Data is saved in localStorage, so refreshing the browser does not erase it.
@@ -40,6 +47,25 @@ function getSystemPreference() {
     return "dark";
   }
   return "light";
+}
+
+/**
+ * Accept 12-hour times such as "3", "11", "3:05", or "11:45" and return a
+ * consistent hour:minute value. Missing minutes are treated as zero.
+ */
+function normalizeDueTime(value) {
+  const match = String(value ?? "")
+    .trim()
+    .match(/^(\d{1,2})(?::(\d{1,2}))?$/);
+
+  if (!match) return null;
+
+  const hour = Number(match[1]);
+  const minute = match[2] === undefined ? 0 : Number(match[2]);
+
+  if (hour < 1 || hour > 12 || minute < 0 || minute > 59) return null;
+
+  return `${hour}:${String(minute).padStart(2, "0")}`;
 }
 
 /**
@@ -172,6 +198,18 @@ function getNextRepeatingTask(task) {
     nextDate.setDate(nextDate.getDate() + 1);
   }
 
+  if (task.repeat === "EVERY_OTHER_WEEKDAY") {
+    let weekdaysAdded = 0;
+
+    while (weekdaysAdded < 2) {
+      nextDate.setDate(nextDate.getDate() + 1);
+
+      if (nextDate.getDay() !== 0 && nextDate.getDay() !== 6) {
+        weekdaysAdded += 1;
+      }
+    }
+  }
+
   if (task.repeat === "WEEKLY") {
     nextDate.setDate(nextDate.getDate() + 7);
   }
@@ -247,6 +285,9 @@ function App() {
   const courseColorsStorageKey = currentUser
     ? `courseColors_${currentUser}`
     : "courseColors_guest";
+  const settingsStorageKey = currentUser
+    ? `settings_${currentUser}`
+    : "settings_guest";
 
   // ---------------------------------------------------------------------------
   // COURSES AND COURSE COLORS
@@ -272,6 +313,17 @@ function App() {
       return {};
     }
   });
+  const [userSettings, setUserSettings] = useState(() => {
+    try {
+      const storedSettings = localStorage.getItem(settingsStorageKey);
+      return storedSettings
+        ? { ...DEFAULT_USER_SETTINGS, ...JSON.parse(storedSettings) }
+        : DEFAULT_USER_SETTINGS;
+    } catch (error) {
+      console.error("Error reading user settings from localStorage:", error);
+      return DEFAULT_USER_SETTINGS;
+    }
+  });
 
   const [isCustomCourse, setIsCustomCourse] = useState(false);
   const [customCourseName, setCustomCourseName] = useState("");
@@ -285,7 +337,7 @@ function App() {
   const [selectedCourse, setSelectedCourse] = useState("");
   const [dueMonth, setDueMonth] = useState("");
   const [dueDay, setDueDay] = useState("");
-  const [dueHour, setDueHour] = useState("11");
+  const [dueHour, setDueHour] = useState("11:00");
   const [dueAmPm, setDueAmPm] = useState("PM");
   const [estTime, setEstTime] = useState("");
   const [priority, setPriority] = useState("MED");
@@ -303,6 +355,7 @@ function App() {
   const [expandedTaskId, setExpandedTaskId] = useState(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [calendarOpen, setCalendarOpen] = useState(true);
+  const [calendarAddOpen, setCalendarAddOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCourse, setFilterCourse] = useState("ALL");
   const [filterPriority, setFilterPriority] = useState("ALL");
@@ -347,6 +400,7 @@ function App() {
   // Turn the compact values stored on a task into text suitable for the UI.
   const formatRepeatLabel = (repeat) => {
     if (repeat === "DAILY") return "Daily";
+    if (repeat === "EVERY_OTHER_WEEKDAY") return "Every Other Weekday";
     if (repeat === "WEEKLY") return "Weekly";
     if (repeat === "MONTHLY") return "Monthly";
     return "Does not repeat";
@@ -381,8 +435,9 @@ function App() {
     const dateLabel = hasDate
       ? `${monthLabel} ${Number(task.dueDay)}`
       : "No date";
-    const timeLabel = task.dueHour
-      ? `${task.dueHour} ${task.dueAmPm || ""}`
+    const normalizedDueTime = normalizeDueTime(task.dueHour);
+    const timeLabel = normalizedDueTime
+      ? `${normalizedDueTime} ${task.dueAmPm || ""}`
       : "No time";
     const repeatLabel =
       task.repeat && task.repeat !== "NONE"
@@ -410,7 +465,25 @@ function App() {
     setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
   };
 
-  // Whenever the active profile changes, load that profile's three datasets.
+  const handleAddFieldSettingChange = (field, isEnabled) => {
+    setUserSettings((prev) => {
+      const updated = { ...prev, [field]: isEnabled };
+
+      try {
+        localStorage.setItem(settingsStorageKey, JSON.stringify(updated));
+      } catch (error) {
+        console.error("Failed to save user settings:", error);
+      }
+
+      return updated;
+    });
+
+    if (!isEnabled && field === "showPriority") setPriority("MED");
+    if (!isEnabled && field === "showRepeat") setRepeatFrequency("NONE");
+    if (!isEnabled && field === "showEstimatedMinutes") setEstTime("");
+  };
+
+  // Whenever the active profile changes, load that profile's saved datasets.
   // If stored JSON is damaged or unavailable, use safe empty/default values.
   // This effect intentionally copies an external browser data source into React
   // state. The targeted lint exception documents that profile switching is the
@@ -430,6 +503,13 @@ function App() {
 
       const rawCourseColors = localStorage.getItem(courseColorsStorageKey);
       setCourseColors(rawCourseColors ? JSON.parse(rawCourseColors) : {});
+
+      const rawSettings = localStorage.getItem(settingsStorageKey);
+      setUserSettings(
+        rawSettings
+          ? { ...DEFAULT_USER_SETTINGS, ...JSON.parse(rawSettings) }
+          : DEFAULT_USER_SETTINGS,
+      );
     } catch (error) {
       console.error("Failed to load user data from localStorage:", error);
       setTasks([]);
@@ -441,11 +521,17 @@ function App() {
         "Other",
       ]);
       setCourseColors({});
+      setUserSettings(DEFAULT_USER_SETTINGS);
     }
 
     setIsCustomCourse(false);
     setCustomCourseName("");
-  }, [currentStorageKey, courseStorageKey, courseColorsStorageKey]);
+  }, [
+    currentStorageKey,
+    courseStorageKey,
+    courseColorsStorageKey,
+    settingsStorageKey,
+  ]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // Remember which profile should be restored on the next browser visit.
@@ -491,7 +577,14 @@ function App() {
     const finalCourse = isCustomCourse
       ? customCourseName.trim()
       : selectedCourse;
+    const normalizedDueTime = normalizeDueTime(dueHour);
+
     if (!taskName || !finalCourse) return;
+
+    if (!normalizedDueTime) {
+      alert("Enter a due time from 1:00 through 12:59.");
+      return;
+    }
 
     if (isCustomCourse && !courses.includes(finalCourse)) {
       const updatedCourses = [...courses, finalCourse].sort();
@@ -509,7 +602,7 @@ function App() {
       course: finalCourse,
       dueMonth: dueMonth,
       dueDay: dueDay,
-      dueHour: dueHour,
+      dueHour: normalizedDueTime,
       dueAmPm: dueAmPm,
       estimatedMinutes: estTime,
       priority: priority,
@@ -537,13 +630,17 @@ function App() {
     setIsCustomCourse(false);
     setDueMonth("");
     setDueDay("");
-    setDueHour("11");
+    setDueHour("11:00");
     setDueAmPm("PM");
     setEstTime("");
     setPriority("MED");
     setRepeatFrequency("NONE");
     setNewSubtaskText("");
     setDraftSubtasks([]);
+
+    if (currentTab === "calendar") {
+      setCalendarAddOpen(false);
+    }
   };
 
   /** Save a new color under the selected course name. */
@@ -756,21 +853,133 @@ function App() {
     });
   };
 
-  // Undo changes only completion status; all other task information is kept.
+  // Undo restores the assignment to In Progress; all other information is kept.
   const handleUndo = (id) => {
     setTasks((prev) => {
       const updated = prev.map((t) =>
-        t.id === id ? { ...t, isCompleted: false, status: "todo" } : t,
+        t.id === id ? { ...t, isCompleted: false, status: "inProgress" } : t,
       );
       saveTasksForCurrentUser(updated);
       return updated;
     });
   };
 
-  // Deleting creates a new array that omits the task with the matching ID.
-  const handleDelete = (id) => {
+  // Archiving keeps completed work available without cluttering Completed.
+  const handleArchive = (id) => {
+    const archivedAt = new Date().toISOString();
+
     setTasks((prev) => {
-      const updated = prev.filter((t) => t.id !== id);
+      const updated = prev.map((task) =>
+        task.id === id &&
+        !task.isDeleted &&
+        getTaskStatus(task) === "completed"
+          ? { ...task, isArchived: true, archivedAt }
+          : task,
+      );
+
+      saveTasksForCurrentUser(updated);
+      return updated;
+    });
+  };
+
+  const handleArchiveAll = () => {
+    const completedCount = tasks.filter(
+      (task) =>
+        !task.isDeleted &&
+        getTaskStatus(task) === "completed" &&
+        !task.isArchived,
+    ).length;
+
+    if (completedCount === 0) return;
+
+    const confirmed = window.confirm(
+      `Archive all ${completedCount} completed assignment${completedCount === 1 ? "" : "s"}?`,
+    );
+
+    if (!confirmed) return;
+
+    const archivedAt = new Date().toISOString();
+    setTasks((prev) => {
+      const updated = prev.map((task) =>
+        !task.isDeleted &&
+        getTaskStatus(task) === "completed" &&
+        !task.isArchived
+          ? { ...task, isArchived: true, archivedAt }
+          : task,
+      );
+
+      saveTasksForCurrentUser(updated);
+      return updated;
+    });
+  };
+
+  const handleRestoreArchived = (id) => {
+    setTasks((prev) => {
+      const updated = prev.map((task) =>
+        task.id === id
+          ? { ...task, isArchived: false, archivedAt: null }
+          : task,
+      );
+
+      saveTasksForCurrentUser(updated);
+      return updated;
+    });
+  };
+
+  // Deleting moves an assignment to recoverable Trash instead of erasing it.
+  const handleDelete = (id) => {
+    const deletedAt = new Date().toISOString();
+
+    setTasks((prev) => {
+      const updated = prev.map((task) =>
+        task.id === id ? { ...task, isDeleted: true, deletedAt } : task,
+      );
+
+      saveTasksForCurrentUser(updated);
+      return updated;
+    });
+  };
+
+  const handleRestoreDeleted = (id) => {
+    setTasks((prev) => {
+      const updated = prev.map((task) =>
+        task.id === id
+          ? { ...task, isDeleted: false, deletedAt: null }
+          : task,
+      );
+
+      saveTasksForCurrentUser(updated);
+      return updated;
+    });
+  };
+
+  const handleDeletePermanently = (id) => {
+    const taskToDelete = tasks.find((task) => task.id === id);
+    const confirmed = window.confirm(
+      `Permanently delete "${taskToDelete?.title || "this assignment"}"? This cannot be undone.`,
+    );
+
+    if (!confirmed) return;
+
+    setTasks((prev) => {
+      const updated = prev.filter((task) => task.id !== id);
+      saveTasksForCurrentUser(updated);
+      return updated;
+    });
+  };
+
+  const handleEmptyTrash = () => {
+    const trashCount = tasks.filter((task) => task.isDeleted).length;
+    if (trashCount === 0) return;
+
+    const confirmed = window.confirm(
+      `Permanently delete all ${trashCount} assignment${trashCount === 1 ? "" : "s"} in Trash? This cannot be undone.`,
+    );
+
+    if (!confirmed) return;
+
+    setTasks((prev) => {
+      const updated = prev.filter((task) => !task.isDeleted);
       saveTasksForCurrentUser(updated);
       return updated;
     });
@@ -788,7 +997,7 @@ function App() {
       notes: task.notes || "",
       subtasks: getSafeSubtasks(task),
       estimatedMinutes: task.estimatedMinutes || "",
-      dueHour: task.dueHour || "11",
+      dueHour: normalizeDueTime(task.dueHour) || "11:00",
       dueAmPm: task.dueAmPm || "PM",
     });
     setEditSubtaskText("");
@@ -853,6 +1062,7 @@ function App() {
 
     const cleanedTitle = editingTask.title.trim();
     const cleanedCourse = editingTask.course || "Other";
+    const normalizedDueTime = normalizeDueTime(editingTask.dueHour);
     const cleanedSubtasks = getSafeSubtasks(editingTask).filter((subtask) =>
       subtask.text.trim(),
     );
@@ -867,10 +1077,16 @@ function App() {
       return;
     }
 
+    if (!normalizedDueTime) {
+      alert("Enter a due time from 1:00 through 12:59.");
+      return;
+    }
+
     const updatedTask = {
       ...editingTask,
       title: cleanedTitle,
       course: cleanedCourse,
+      dueHour: normalizedDueTime,
       repeat: editingTask.repeat || "NONE",
       isCompleted,
       status: isCompleted ? "completed" : getTaskStatus(editingTask),
@@ -910,6 +1126,31 @@ function App() {
   const handleSignOut = () => {
     setCurrentUser("");
     setCurrentTab("dashboard");
+  };
+
+  const prefillDueDate = (date) => {
+    setDueMonth(String(date.getMonth() + 1).padStart(2, "0"));
+    setDueDay(String(date.getDate()).padStart(2, "0"));
+  };
+
+  const handleCalendarDateChange = (date) => {
+    setSelectedDate(date);
+
+    if (calendarAddOpen) {
+      prefillDueDate(date);
+    }
+  };
+
+  // Open the shared assignment form directly beneath the selected calendar day.
+  const handleAddForSelectedDate = () => {
+    prefillDueDate(selectedDate);
+    setCalendarAddOpen(true);
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        document.getElementById("calendar-assignment-name")?.focus();
+      });
+    });
   };
 
   const isFormInvalid =
@@ -966,17 +1207,54 @@ function App() {
 
   const todoTasks = tasks.filter(
     (task) =>
-      getTaskStatus(task) === "todo" && assignmentMatchesFilters(task),
+      !task.isArchived &&
+      !task.isDeleted &&
+      getTaskStatus(task) === "todo" &&
+      assignmentMatchesFilters(task),
   );
 
   const inProgressTasks = tasks.filter(
     (task) =>
-      getTaskStatus(task) === "inProgress" && assignmentMatchesFilters(task),
+      !task.isArchived &&
+      !task.isDeleted &&
+      getTaskStatus(task) === "inProgress" &&
+      assignmentMatchesFilters(task),
   );
 
   const completedTasks = tasks.filter(
     (task) =>
-      getTaskStatus(task) === "completed" && assignmentMatchesFilters(task),
+      !task.isArchived &&
+      !task.isDeleted &&
+      getTaskStatus(task) === "completed" &&
+      assignmentMatchesFilters(task),
+  );
+
+  const archivedTasks = tasks
+    .filter((task) => task.isArchived && !task.isDeleted)
+    .sort((a, b) =>
+      String(b.archivedAt || "").localeCompare(String(a.archivedAt || "")),
+    );
+
+  const unarchivedCompletedCount = tasks.filter(
+    (task) =>
+      !task.isDeleted &&
+      getTaskStatus(task) === "completed" &&
+      !task.isArchived,
+  ).length;
+
+  const trashTasks = tasks
+    .filter((task) => task.isDeleted)
+    .sort((a, b) =>
+      String(b.deletedAt || "").localeCompare(String(a.deletedAt || "")),
+    );
+
+  const calendarTasks = tasks.filter(
+    (task) => !task.isArchived && !task.isDeleted,
+  );
+  const selectedDateTasks = calendarTasks.filter(
+    (task) =>
+      Number(task.dueMonth) === selectedDate.getMonth() + 1 &&
+      Number(task.dueDay) === selectedDate.getDate(),
   );
 
   // To Do and In Progress use the same student-friendly order: urgent first,
@@ -1029,7 +1307,12 @@ function App() {
    * 4. Alphabetical title for a stable final tie
    */
   const recommendedTasks = tasks
-    .filter((task) => getTaskStatus(task) !== "completed")
+    .filter(
+      (task) =>
+        !task.isArchived &&
+        !task.isDeleted &&
+        getTaskStatus(task) !== "completed",
+    )
     .sort((a, b) => {
       const bucketA = bucketsOrder.indexOf(
         getDueDateBucket(a.dueMonth, a.dueDay),
@@ -1188,6 +1471,7 @@ function App() {
               <option value="ALL">All Repeat Types</option>
               <option value="NONE">Does not repeat</option>
               <option value="DAILY">Daily</option>
+              <option value="EVERY_OTHER_WEEKDAY">Every Other Weekday</option>
               <option value="WEEKLY">Weekly</option>
               <option value="MONTHLY">Monthly</option>
             </select>
@@ -1271,26 +1555,236 @@ function App() {
     );
   };
 
+  // Dashboard and Calendar share one form so assignment behavior stays aligned.
+  const renderAddAssignmentForm = (formId) => (
+    <form onSubmit={handleAddTask} className="card-form">
+      <label htmlFor={`${formId}-assignment-name`}>Assignment Name:</label>
+      <input
+        id={`${formId}-assignment-name`}
+        type="text"
+        placeholder="e.g., Read Chapter 4"
+        value={taskName}
+        onChange={(e) => setTaskName(e.target.value)}
+      />
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginTop: "8px",
+        }}
+      >
+        <label>Course:</label>
+        <button
+          type="button"
+          onClick={() => setIsCustomCourse(!isCustomCourse)}
+          style={{
+            background: "none",
+            border: "none",
+            color: "var(--button-primary-bg, #007bff)",
+            cursor: "pointer",
+            fontSize: "12px",
+            textDecoration: "underline",
+          }}
+        >
+          {isCustomCourse ? "Select Existing Course" : "➕ Add Custom Course"}
+        </button>
+      </div>
+
+      {isCustomCourse ? (
+        <input
+          type="text"
+          placeholder="Type new course name (e.g., AP Psychology)"
+          value={customCourseName}
+          onChange={(e) => setCustomCourseName(e.target.value)}
+        />
+      ) : (
+        <select
+          value={selectedCourse}
+          onChange={(e) => setSelectedCourse(e.target.value)}
+        >
+          <option value="">Select a course</option>
+          {courses.map((course) => (
+            <option key={course} value={course}>
+              {course}
+            </option>
+          ))}
+        </select>
+      )}
+
+      <label>Due Date:</label>
+      <div style={{ display: "flex", gap: "8px" }}>
+        <select value={dueMonth} onChange={(e) => setDueMonth(e.target.value)}>
+          <option value="">Month</option>
+          {monthNames.map((month, index) => (
+            <option
+              key={month}
+              value={String(index + 1).padStart(2, "0")}
+            >
+              {month}
+            </option>
+          ))}
+        </select>
+        <select value={dueDay} onChange={(e) => setDueDay(e.target.value)}>
+          <option value="">Day</option>
+          {Array.from({ length: 31 }, (_, index) => index + 1).map((day) => (
+            <option key={day} value={String(day).padStart(2, "0")}>
+              {day}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <label>Due Time (hour or hour:minutes):</label>
+      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+        <input
+          type="text"
+          inputMode="numeric"
+          placeholder="e.g., 3 or 3:45"
+          value={dueHour}
+          onChange={(e) => setDueHour(e.target.value)}
+          onBlur={() => {
+            const normalized = normalizeDueTime(dueHour);
+            if (normalized) setDueHour(normalized);
+          }}
+          style={{ width: "130px" }}
+        />
+        <select value={dueAmPm} onChange={(e) => setDueAmPm(e.target.value)}>
+          <option value="AM">AM</option>
+          <option value="PM">PM</option>
+        </select>
+      </div>
+
+      {userSettings.showEstimatedMinutes && (
+        <>
+          <label>Estimated Minutes:</label>
+          <input
+            type="number"
+            placeholder="e.g., 45"
+            value={estTime}
+            onChange={(e) => setEstTime(e.target.value)}
+          />
+        </>
+      )}
+
+      {userSettings.showPriority && (
+        <>
+          <label>Priority:</label>
+          <select
+            value={priority}
+            onChange={(e) => setPriority(e.target.value)}
+          >
+            <option value="LOW">Low</option>
+            <option value="MED">Medium</option>
+            <option value="HIGH">High</option>
+          </select>
+        </>
+      )}
+
+      {userSettings.showRepeat && (
+        <>
+          <label>Repeat:</label>
+          <select
+            value={repeatFrequency}
+            onChange={(e) => setRepeatFrequency(e.target.value)}
+          >
+            <option value="NONE">Does not repeat</option>
+            <option value="DAILY">Daily</option>
+            <option value="EVERY_OTHER_WEEKDAY">Every Other Weekday</option>
+            <option value="WEEKLY">Weekly</option>
+            <option value="MONTHLY">Monthly</option>
+          </select>
+        </>
+      )}
+
+      <div className="subtask-form-section">
+        <div>
+          <label>Optional Checklist Steps:</label>
+          <p className="subtask-form-hint">
+            Break the assignment into smaller pieces. Leave this blank if the
+            assignment does not need steps.
+          </p>
+        </div>
+
+        <div className="subtask-form-row">
+          <input
+            type="text"
+            placeholder="e.g., Find quotes"
+            value={newSubtaskText}
+            onChange={(e) => setNewSubtaskText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleAddDraftSubtask();
+              }
+            }}
+          />
+          <button
+            type="button"
+            className="btn btn-secondary subtask-add-button"
+            onClick={handleAddDraftSubtask}
+          >
+            Add Step
+          </button>
+        </div>
+
+        {draftSubtasks.length > 0 && (
+          <ul className="subtask-draft-list">
+            {draftSubtasks.map((subtask) => (
+              <li key={subtask.id} className="subtask-draft-item">
+                <span>{subtask.text}</span>
+                <button
+                  type="button"
+                  className="subtask-remove-button"
+                  onClick={() => handleRemoveDraftSubtask(subtask.id)}
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <button
+        type="submit"
+        className="btn btn-primary"
+        disabled={isFormInvalid}
+        style={{
+          padding: "10px",
+          borderRadius: "4px",
+          marginTop: "10px",
+          cursor: isFormInvalid ? "not-allowed" : "pointer",
+          opacity: isFormInvalid ? 0.6 : 1,
+        }}
+      >
+        Add Assignment
+      </button>
+    </form>
+  );
+
   // Dashboard summary values. Only incomplete work contributes to the active,
   // overdue, due-today, and remaining-workload statistics.
-  const activeTasksCount = tasks.filter(
-    (task) => getTaskStatus(task) !== "completed",
-  ).length;
-
-  const overdueTasksCount = tasks.filter(
+  const activeDashboardTasks = tasks.filter(
     (task) =>
-      getTaskStatus(task) !== "completed" &&
+      !task.isArchived &&
+      !task.isDeleted &&
+      getTaskStatus(task) !== "completed",
+  );
+  const activeTasksCount = activeDashboardTasks.length;
+
+  const overdueTasksCount = activeDashboardTasks.filter(
+    (task) =>
       getDueDateBucket(task.dueMonth, task.dueDay) === "Overdue 🚨",
   ).length;
 
-  const dueTodayCount = tasks.filter(
+  const dueTodayCount = activeDashboardTasks.filter(
     (task) =>
-      getTaskStatus(task) !== "completed" &&
       getDueDateBucket(task.dueMonth, task.dueDay) === "Due Today ⏰",
   ).length;
 
-  const totalEstimatedMinutes = tasks
-    .filter((task) => getTaskStatus(task) !== "completed")
+  const totalEstimatedMinutes = activeDashboardTasks
     .reduce((total, task) => total + (Number(task.estimatedMinutes) || 0), 0);
 
   const estimatedHours = Math.floor(totalEstimatedMinutes / 60);
@@ -1322,7 +1816,7 @@ function App() {
 
         {/*
           Navigation changes currentTab. The active class lets CSS highlight the
-          selected view; signing out and theme switching are also available here.
+          selected view; signing out and Settings access are also available here.
         */}
         <div className="tab-row">
           <button
@@ -1367,15 +1861,20 @@ function App() {
             {currentUser ? "Switch User" : "Sign In"}
           </button>
 
+          <button
+            className={`tab-button ${currentTab === "settings" ? "active" : ""}`}
+            onClick={() => setCurrentTab("settings")}
+            aria-label="Settings"
+            title="Settings"
+          >
+            ⚙️ Settings
+          </button>
+
           {currentUser && (
             <button className="btn btn-danger" onClick={handleSignOut}>
               Sign Out
             </button>
           )}
-
-          <button className="btn btn-secondary" onClick={toggleTheme}>
-            {theme === "dark" ? "Light Mode" : "Dark Mode"}
-          </button>
         </div>
 
         {/*
@@ -1503,7 +2002,10 @@ function App() {
             </section>
 
             {/* Collapsible form for creating a new assignment. */}
-            <div className="card card-container">
+            <div
+              id="add-assignment-section"
+              className="card card-container"
+            >
               <div className="assignment-header-row">
                 <h3>➕ Add New Assignment</h3>
 
@@ -1516,215 +2018,7 @@ function App() {
                 </button>
               </div>
 
-              {addAssignmentOpen && (
-                <form onSubmit={handleAddTask} className="card-form">
-                  <label>Assignment Name:</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Read Chapter 4"
-                    value={taskName}
-                    onChange={(e) => setTaskName(e.target.value)}
-                  />
-
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginTop: "8px",
-                    }}
-                  >
-                    <label>Course:</label>
-                    <button
-                      type="button"
-                      onClick={() => setIsCustomCourse(!isCustomCourse)}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        color: "var(--button-primary-bg, #007bff)",
-                        cursor: "pointer",
-                        fontSize: "12px",
-                        textDecoration: "underline",
-                      }}
-                    >
-                      {isCustomCourse
-                        ? "Select Existing Course"
-                        : "➕ Add Custom Course"}
-                    </button>
-                  </div>
-
-                  {isCustomCourse ? (
-                    <input
-                      type="text"
-                      placeholder="Type new course name (e.g., AP Psychology)"
-                      value={customCourseName}
-                      onChange={(e) => setCustomCourseName(e.target.value)}
-                    />
-                  ) : (
-                    <select
-                      value={selectedCourse}
-                      onChange={(e) => setSelectedCourse(e.target.value)}
-                    >
-                      <option value="">Select a course</option>
-                      {courses.map((course) => (
-                        <option key={course} value={course}>
-                          {course}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-
-                  <label>Due Date:</label>
-                  <div style={{ display: "flex", gap: "8px" }}>
-                    <select
-                      value={dueMonth}
-                      onChange={(e) => setDueMonth(e.target.value)}
-                    >
-                      <option value="">Month</option>
-                      {monthNames.map((m, idx) => (
-                        <option
-                          key={m}
-                          value={String(idx + 1).padStart(2, "0")}
-                        >
-                          {m}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      value={dueDay}
-                      onChange={(e) => setDueDay(e.target.value)}
-                    >
-                      <option value="">Day</option>
-                      {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-                        <option key={d} value={String(d).padStart(2, "0")}>
-                          {d}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <label>Due Time (12-hour):</label>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: "8px",
-                      alignItems: "center",
-                    }}
-                  >
-                    <input
-                      type="number"
-                      min="1"
-                      max="12"
-                      value={dueHour}
-                      onChange={(e) => setDueHour(e.target.value)}
-                      style={{ width: "80px" }}
-                    />
-                    <select
-                      value={dueAmPm}
-                      onChange={(e) => setDueAmPm(e.target.value)}
-                    >
-                      <option value="AM">AM</option>
-                      <option value="PM">PM</option>
-                    </select>
-                  </div>
-
-                  <label>Estimated Minutes:</label>
-                  <input
-                    type="number"
-                    placeholder="e.g., 45"
-                    value={estTime}
-                    onChange={(e) => setEstTime(e.target.value)}
-                  />
-
-                  <label>Priority:</label>
-                  <select
-                    value={priority}
-                    onChange={(e) => setPriority(e.target.value)}
-                  >
-                    <option value="LOW">Low</option>
-                    <option value="MED">Medium</option>
-                    <option value="HIGH">High</option>
-                  </select>
-
-                  <label>Repeat:</label>
-                  <select
-                    value={repeatFrequency}
-                    onChange={(e) => setRepeatFrequency(e.target.value)}
-                  >
-                    <option value="NONE">Does not repeat</option>
-                    <option value="DAILY">Daily</option>
-                    <option value="WEEKLY">Weekly</option>
-                    <option value="MONTHLY">Monthly</option>
-                  </select>
-
-                  <div className="subtask-form-section">
-                    <div>
-                      <label>Optional Checklist Steps:</label>
-                      <p className="subtask-form-hint">
-                        Break the assignment into smaller pieces. Leave this
-                        blank if the assignment does not need steps.
-                      </p>
-                    </div>
-
-                    <div className="subtask-form-row">
-                      <input
-                        type="text"
-                        placeholder="e.g., Find quotes"
-                        value={newSubtaskText}
-                        onChange={(e) => setNewSubtaskText(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleAddDraftSubtask();
-                          }
-                        }}
-                      />
-
-                      <button
-                        type="button"
-                        className="btn btn-secondary subtask-add-button"
-                        onClick={handleAddDraftSubtask}
-                      >
-                        Add Step
-                      </button>
-                    </div>
-
-                    {draftSubtasks.length > 0 && (
-                      <ul className="subtask-draft-list">
-                        {draftSubtasks.map((subtask) => (
-                          <li key={subtask.id} className="subtask-draft-item">
-                            <span>{subtask.text}</span>
-                            <button
-                              type="button"
-                              className="subtask-remove-button"
-                              onClick={() =>
-                                handleRemoveDraftSubtask(subtask.id)
-                              }
-                            >
-                              Remove
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="btn btn-primary"
-                    disabled={isFormInvalid}
-                    style={{
-                      padding: "10px",
-                      borderRadius: "4px",
-                      marginTop: "10px",
-                      cursor: isFormInvalid ? "not-allowed" : "pointer",
-                      opacity: isFormInvalid ? 0.6 : 1,
-                    }}
-                  >
-                    Add Assignment
-                  </button>
-                </form>
-              )}
+              {addAssignmentOpen && renderAddAssignmentForm("dashboard")}
               <div
                 className="course-colors-section"
                 style={{ marginTop: "25px" }}
@@ -1947,7 +2241,7 @@ function App() {
                                     cursor: "pointer",
                                   }}
                                 >
-                                  Delete
+                                  Move to Trash
                                 </button>
                               </div>
 
@@ -2116,7 +2410,7 @@ function App() {
                                     cursor: "pointer",
                                   }}
                                 >
-                                  Delete
+                                  Move to Trash
                                 </button>
                               </div>
 
@@ -2160,7 +2454,17 @@ function App() {
             <div>
               {renderFilterToggle()}
 
-              <h3>✅ Completed ({completedTasks.length})</h3>
+              <div className="assignment-header-row">
+                <h3>✅ Completed ({completedTasks.length})</h3>
+                <button
+                  type="button"
+                  className="btn btn-secondary assignment-toggle-button"
+                  onClick={handleArchiveAll}
+                  disabled={unarchivedCompletedCount === 0}
+                >
+                  Archive All
+                </button>
+              </div>
 
               {renderFilterControls()}
 
@@ -2230,6 +2534,21 @@ function App() {
                         </button>
 
                         <button
+                          className="btn btn-secondary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleArchive(task.id);
+                          }}
+                          style={{
+                            padding: "5px 10px",
+                            borderRadius: "4px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Archive
+                        </button>
+
+                        <button
                           className="btn btn-danger"
                           onClick={(e) => {
                             e.stopPropagation();
@@ -2241,7 +2560,7 @@ function App() {
                             cursor: "pointer",
                           }}
                         >
-                          Delete
+                          Move to Trash
                         </button>
                       </div>
 
@@ -2296,10 +2615,10 @@ function App() {
               {calendarOpen && (
                 <>
                   <Calendar
-                    onChange={setSelectedDate}
+                    onChange={handleCalendarDateChange}
                     value={selectedDate}
                     tileContent={({ date }) => {
-                      const taskForDay = tasks.find(
+                      const taskForDay = calendarTasks.find(
                         (task) =>
                           Number(task.dueMonth) === date.getMonth() + 1 &&
                           Number(task.dueDay) === date.getDate(),
@@ -2324,11 +2643,7 @@ function App() {
                     Assignments for {selectedDate.toDateString()}
                   </h4>
 
-                  {tasks.filter(
-                    (task) =>
-                      Number(task.dueMonth) === selectedDate.getMonth() + 1 &&
-                      Number(task.dueDay) === selectedDate.getDate(),
-                  ).length === 0 ? (
+                  {selectedDateTasks.length === 0 ? (
                     <p className="placeholder-text">
                       No assignments due on this day.
                     </p>
@@ -2337,14 +2652,7 @@ function App() {
                       className="task-list"
                       style={{ paddingLeft: 0, listStyle: "none" }}
                     >
-                      {tasks
-                        .filter(
-                          (task) =>
-                            Number(task.dueMonth) ===
-                              selectedDate.getMonth() + 1 &&
-                            Number(task.dueDay) === selectedDate.getDate(),
-                        )
-                        .map((task) => (
+                      {selectedDateTasks.map((task) => (
                           <li
                             key={task.id}
                             className={`task-card calendar-task-card${expandedTaskId === task.id ? " expanded" : ""}`}
@@ -2421,6 +2729,45 @@ function App() {
                         ))}
                     </ul>
                   )}
+
+                  <div className="calendar-add-action">
+                    <div>
+                      <strong>Add something due on this day</strong>
+                      <p className="hint-text">
+                        Use the full assignment form below with the selected
+                        month and day already filled in.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className={`btn ${calendarAddOpen ? "btn-secondary" : "btn-primary"}`}
+                      onClick={() => {
+                        if (calendarAddOpen) {
+                          setCalendarAddOpen(false);
+                        } else {
+                          handleAddForSelectedDate();
+                        }
+                      }}
+                    >
+                      {calendarAddOpen ? "Cancel" : "➕ Add Assignment"}
+                    </button>
+                  </div>
+
+                  {calendarAddOpen && (
+                    <div
+                      className="card card-container"
+                      style={{ marginTop: "16px" }}
+                    >
+                      <h3>
+                        Add Assignment for{" "}
+                        {selectedDate.toLocaleDateString(undefined, {
+                          month: "long",
+                          day: "numeric",
+                        })}
+                      </h3>
+                      {renderAddAssignmentForm("calendar")}
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -2447,6 +2794,160 @@ function App() {
                 Signing in will load and save assignments under your username in
                 local storage.
               </p>
+            </div>
+          )}
+
+          {/* SETTINGS: central home for appearance and future app preferences. */}
+          {currentTab === "settings" && (
+            <div className="card card-container" style={{ marginTop: "10px" }}>
+              <div className="settings-grid">
+                <section className="settings-section">
+                  <h4>Appearance</h4>
+                  <p className="hint-text">Currently using {theme} mode.</p>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={toggleTheme}
+                  >
+                    Use {theme === "dark" ? "Light Mode" : "Dark Mode"}
+                  </button>
+                </section>
+
+                <section className="settings-section">
+                  <h4>Add Assignment Fields</h4>
+                  <p className="hint-text">
+                    {currentUser
+                      ? `Saved for ${currentUser}.`
+                      : "Sign in to keep these preferences with a profile."}
+                  </p>
+
+                  <label className="settings-toggle">
+                    <span>Priority</span>
+                    <input
+                      type="checkbox"
+                      checked={userSettings.showPriority}
+                      onChange={(e) =>
+                        handleAddFieldSettingChange(
+                          "showPriority",
+                          e.target.checked,
+                        )
+                      }
+                    />
+                  </label>
+                  <label className="settings-toggle">
+                    <span>Repeat</span>
+                    <input
+                      type="checkbox"
+                      checked={userSettings.showRepeat}
+                      onChange={(e) =>
+                        handleAddFieldSettingChange(
+                          "showRepeat",
+                          e.target.checked,
+                        )
+                      }
+                    />
+                  </label>
+                  <label className="settings-toggle">
+                    <span>Estimated Minutes</span>
+                    <input
+                      type="checkbox"
+                      checked={userSettings.showEstimatedMinutes}
+                      onChange={(e) =>
+                        handleAddFieldSettingChange(
+                          "showEstimatedMinutes",
+                          e.target.checked,
+                        )
+                      }
+                    />
+                  </label>
+                </section>
+
+                <details className="settings-section settings-storage-section">
+                  <summary>
+                    <span>Archive</span>
+                    <span className="settings-count">{archivedTasks.length}</span>
+                  </summary>
+                  <div className="settings-storage-body">
+                    {archivedTasks.length === 0 ? (
+                      <p className="placeholder-text">
+                        No archived assignments.
+                      </p>
+                    ) : (
+                      <ul className="task-list archive-list">
+                        {archivedTasks.map((task) => (
+                          <li key={task.id} className="task-card">
+                            <div>
+                              <strong>{task.title}</strong>
+                              <div className="task-details">
+                                {formatTaskDetails(task)}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              className="btn btn-secondary"
+                              onClick={() => handleRestoreArchived(task.id)}
+                            >
+                              Restore
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </details>
+
+                <details className="settings-section settings-storage-section">
+                  <summary>
+                    <span>Trash</span>
+                    <span className="settings-count">{trashTasks.length}</span>
+                  </summary>
+                  <div className="settings-storage-body">
+                    {trashTasks.length === 0 ? (
+                      <p className="placeholder-text">Trash is empty.</p>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="btn btn-danger settings-empty-trash"
+                          onClick={handleEmptyTrash}
+                        >
+                          Empty Trash
+                        </button>
+                        <ul className="task-list archive-list">
+                          {trashTasks.map((task) => (
+                            <li key={task.id} className="task-card">
+                              <div>
+                                <strong>{task.title}</strong>
+                                <div className="task-details">
+                                  {formatTaskDetails(task)}
+                                </div>
+                              </div>
+                              <div className="task-actions">
+                                <button
+                                  type="button"
+                                  className="btn btn-secondary"
+                                  onClick={() => handleRestoreDeleted(task.id)}
+                                >
+                                  Restore
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-danger"
+                                  onClick={() =>
+                                    handleDeletePermanently(task.id)
+                                  }
+                                >
+                                  Delete Permanently
+                                </button>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                  </div>
+                </details>
+              </div>
             </div>
           )}
         </div>
@@ -2563,15 +3064,23 @@ function App() {
                   </div>
 
                   <div className="edit-field">
-                    <label>Due Hour</label>
+                    <label>Due Time</label>
                     <input
-                      type="number"
-                      min="1"
-                      max="12"
-                      value={editingTask.dueHour || "11"}
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="e.g., 3 or 3:45"
+                      value={editingTask.dueHour || "11:00"}
                       onChange={(e) =>
                         handleEditFieldChange("dueHour", e.target.value)
                       }
+                      onBlur={() => {
+                        const normalized = normalizeDueTime(
+                          editingTask.dueHour,
+                        );
+                        if (normalized) {
+                          handleEditFieldChange("dueHour", normalized);
+                        }
+                      }}
                     />
                   </div>
 
@@ -2613,6 +3122,9 @@ function App() {
                     >
                       <option value="NONE">Does not repeat</option>
                       <option value="DAILY">Daily</option>
+                      <option value="EVERY_OTHER_WEEKDAY">
+                        Every Other Weekday
+                      </option>
                       <option value="WEEKLY">Weekly</option>
                       <option value="MONTHLY">Monthly</option>
                     </select>
