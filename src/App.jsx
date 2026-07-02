@@ -7,10 +7,254 @@ const DEFAULT_USER_SETTINGS = {
   showPriority: true,
   showRepeat: true,
   showEstimatedMinutes: true,
+  notificationsEnabled: false,
+  reminderMinutes: 60,
+  schoolLevel: "high",
+  cycleDayNames: ["A Day", "B Day"],
+  cycleAnchorDate: "",
+  courseCycleDays: {},
+  customColors: {},
 };
 
+const ACCOUNTS_STORAGE_KEY = "taskacadia_accounts";
+const AUTH_USER_STORAGE_KEY = "taskacadia_authenticated_user";
+const LOGIN_COLORS_STORAGE_KEY = "taskacadia_login_colors";
+const TASK_CATEGORIES = ["School", "Work", "Personal"];
+const SCHOOL_LEVEL_COPY = {
+  middle: {
+    eyebrow: "Homework Command Center",
+    subtitle: "Keep classes, homework, and daily steps clear and manageable.",
+  },
+  high: {
+    eyebrow: "Student Productivity Hub",
+    subtitle: "Organize assignments, track deadlines, manage courses, and plan your workload.",
+  },
+  college: {
+    eyebrow: "College Coursework Planner",
+    subtitle: "Coordinate courses, projects, readings, and independent work in one place.",
+  },
+};
+
+const COLOR_PERSONALIZATION_FIELDS = [
+  { key: "page", label: "Page background", group: "Foundations" },
+  { key: "surface", label: "Cards and surfaces", group: "Foundations" },
+  { key: "surfaceAlt", label: "Secondary surfaces", group: "Foundations" },
+  { key: "text", label: "Main text", group: "Foundations" },
+  { key: "muted", label: "Muted text", group: "Foundations" },
+  { key: "border", label: "Borders", group: "Foundations" },
+  { key: "focus", label: "Focus outline", group: "Foundations" },
+  { key: "input", label: "Inputs", group: "Foundations" },
+  { key: "nav", label: "Navigation", group: "Foundations" },
+  { key: "task", label: "Assignment cards", group: "Workspace" },
+  { key: "modal", label: "Modals", group: "Workspace" },
+  { key: "backdrop", label: "Modal backdrop", group: "Workspace" },
+  { key: "primary", label: "Primary actions", group: "Actions" },
+  { key: "primaryText", label: "Primary button text", group: "Actions" },
+  { key: "secondary", label: "Secondary actions", group: "Actions" },
+  { key: "secondaryText", label: "Secondary button text", group: "Actions" },
+  { key: "success", label: "Success", group: "Actions" },
+  { key: "warning", label: "Warning", group: "Actions" },
+  { key: "warningText", label: "Warning text", group: "Actions" },
+  { key: "danger", label: "Danger", group: "Actions" },
+  { key: "dangerText", label: "Danger text", group: "Actions" },
+  { key: "priorityHigh", label: "High-priority cards", group: "Actions" },
+  { key: "link", label: "Links", group: "Actions" },
+  { key: "calendar", label: "Calendar background", group: "Calendar" },
+  { key: "calendarText", label: "Calendar text", group: "Calendar" },
+  { key: "calendarSelected", label: "Selected date", group: "Calendar" },
+  { key: "calendarToday", label: "Today", group: "Calendar" },
+  { key: "heroStart", label: "Header gradient start", group: "Header" },
+  { key: "heroMiddle", label: "Header gradient middle", group: "Header" },
+  { key: "heroEnd", label: "Header gradient end", group: "Header" },
+  { key: "heroText", label: "Header text", group: "Header" },
+];
+
+const THEME_COLOR_DEFAULTS = {
+  light: {
+    page: "#f4f7fb", surface: "#ffffff", surfaceAlt: "#ebeff3",
+    text: "#111827", muted: "#6b7280", border: "#dbe3ef", focus: "#6366f1", input: "#ffffff",
+    nav: "#ffffff", task: "#ffffff", modal: "#ffffff", backdrop: "#020617", primary: "#4f46e5",
+    primaryText: "#ffffff", secondary: "#e5e7eb", secondaryText: "#111827",
+    success: "#16a34a", warning: "#f59e0b", warningText: "#111827",
+    danger: "#dc2626", dangerText: "#ffffff", priorityHigh: "#ffebeb",
+    link: "#2563eb", calendar: "#ffffff", calendarText: "#111827",
+    calendarSelected: "#2563eb", calendarToday: "#dbeafe",
+    heroStart: "#4f46e5", heroMiddle: "#7c3aed", heroEnd: "#2563eb", heroText: "#ffffff",
+  },
+  dark: {
+    page: "#0b1020", surface: "#151b2e", surfaceAlt: "#1f2937",
+    text: "#f9fafb", muted: "#aab3c5", border: "#293247", focus: "#818cf8", input: "#111827",
+    nav: "#151b2e", task: "#151b2e", modal: "#151b2e", backdrop: "#020617", primary: "#60a5fa",
+    primaryText: "#0b1020", secondary: "#334155", secondaryText: "#ffffff",
+    success: "#22c55e", warning: "#facc15", warningText: "#111827",
+    danger: "#ef4444", dangerText: "#ffffff", priorityHigh: "#4a1a1a",
+    link: "#60a5fa", calendar: "#111827", calendarText: "#f9fafb",
+    calendarSelected: "#2563eb", calendarToday: "#4b5563",
+    heroStart: "#312e81", heroMiddle: "#581c87", heroEnd: "#1e3a8a", heroText: "#ffffff",
+  },
+};
+
+const COLOR_CSS_VARIABLES = {
+  page: ["--page-bg", "--background-color"],
+  surface: ["--card-bg", "--card-background"],
+  surfaceAlt: ["--surface-alt"],
+  text: ["--text-color"],
+  muted: ["--muted-text", "--placeholder-color", "--text-muted"],
+  border: ["--border-color"],
+  focus: ["--focus-color"],
+  input: ["--input-bg"],
+  nav: ["--nav-bg"],
+  task: ["--task-bg"],
+  modal: ["--modal-bg"],
+  backdrop: ["--backdrop-color"],
+  primary: ["--button-primary-bg", "--primary-color"],
+  primaryText: ["--button-primary-color"],
+  secondary: ["--secondary-color"],
+  secondaryText: ["--secondary-text"],
+  success: ["--success-color"],
+  warning: ["--button-warning-bg", "--warning-color"],
+  warningText: ["--button-warning-color"],
+  danger: ["--button-danger-bg", "--danger-color"],
+  dangerText: ["--danger-text"],
+  priorityHigh: ["--priority-high-bg"],
+  link: ["--link-color"],
+  calendar: ["--calendar-bg"],
+  calendarText: ["--calendar-text"],
+  calendarSelected: ["--calendar-selected"],
+  calendarToday: ["--calendar-today"],
+  heroStart: ["--hero-start"],
+  heroMiddle: ["--hero-middle"],
+  heroEnd: ["--hero-end"],
+  heroText: ["--hero-text"],
+};
+
+const SETTINGS_SECTIONS = [
+  { id: "personalization", label: "Personalization", description: "Theme, school level, and every color." },
+  { id: "assignments", label: "Assignment Options", description: "Choose which fields appear when adding work." },
+  { id: "reminders", label: "Reminders & App", description: "Notifications and installation." },
+  { id: "cycle", label: "School Cycle", description: "Cycle labels, anchor date, and courses." },
+  { id: "storage", label: "Storage", description: "Archived assignments and Trash." },
+];
+
+function getTaskCategory(task) {
+  return task?.category || "School";
+}
+
+function getCycleDayForDate(date, settings) {
+  const dayNames = Array.isArray(settings?.cycleDayNames)
+    ? settings.cycleDayNames.filter(Boolean)
+    : [];
+  if (!settings?.cycleAnchorDate || dayNames.length === 0) return null;
+  if (date.getDay() === 0 || date.getDay() === 6) return null;
+  const [year, month, day] = settings.cycleAnchorDate.split("-").map(Number);
+  const anchor = new Date(year, month - 1, day);
+  if (Number.isNaN(anchor.getTime())) return null;
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const cursor = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
+  const direction = target >= cursor ? 1 : -1;
+  let schoolDays = 0;
+  while (cursor.getTime() !== target.getTime()) {
+    cursor.setDate(cursor.getDate() + direction);
+    if (cursor.getDay() !== 0 && cursor.getDay() !== 6) schoolDays += direction;
+  }
+  const index = ((schoolDays % dayNames.length) + dayNames.length) % dayNames.length;
+  return dayNames[index];
+}
+
+function getStoredAccounts() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(ACCOUNTS_STORAGE_KEY) || "{}");
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function findLegacyProfileKey(username) {
+  const normalizedName = username.toLowerCase();
+  const prefixes = ["tasks_", "courses_", "courseColors_", "settings_"];
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const key = localStorage.key(index) || "";
+    const prefix = prefixes.find((candidate) => key.startsWith(candidate));
+    if (!prefix) continue;
+    const profileKey = key.slice(prefix.length);
+    if (profileKey !== "guest" && profileKey.toLowerCase() === normalizedName) {
+      return profileKey;
+    }
+  }
+  return null;
+}
+
+function bytesToBase64(bytes) {
+  return btoa(String.fromCharCode(...bytes));
+}
+
+function base64ToBytes(value) {
+  return Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
+}
+
+async function derivePasswordVerifier(password, salt) {
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"],
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt, iterations: 150000, hash: "SHA-256" },
+    keyMaterial,
+    256,
+  );
+  return bytesToBase64(new Uint8Array(bits));
+}
+
+function openAttachmentDatabase() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open("taskacadia_attachments", 1);
+    request.onupgradeneeded = () => {
+      const database = request.result;
+      if (!database.objectStoreNames.contains("files")) {
+        database.createObjectStore("files", { keyPath: "id" });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function putAttachmentFile(id, file) {
+  const database = await openAttachmentDatabase();
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction("files", "readwrite");
+    transaction.objectStore("files").put({ id, blob: file });
+    transaction.oncomplete = () => { database.close(); resolve(); };
+    transaction.onerror = () => { database.close(); reject(transaction.error); };
+  });
+}
+
+async function getAttachmentFile(id) {
+  const database = await openAttachmentDatabase();
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction("files", "readonly");
+    const request = transaction.objectStore("files").get(id);
+    request.onsuccess = () => { database.close(); resolve(request.result?.blob || null); };
+    request.onerror = () => { database.close(); reject(request.error); };
+  });
+}
+
+async function deleteAttachmentFile(id) {
+  const database = await openAttachmentDatabase();
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction("files", "readwrite");
+    transaction.objectStore("files").delete(id);
+    transaction.oncomplete = () => { database.close(); resolve(); };
+    transaction.onerror = () => { database.close(); reject(transaction.error); };
+  });
+}
+
 /**
- * TASKACADIA APPLICATION GUIDE
+ * TASKCABINET APPLICATION GUIDE
  *
  * This file contains the app's data, behavior, and visible React interface.
  * how to read it is from top to bottom:
@@ -68,10 +312,45 @@ function normalizeDueTime(value) {
   return `${hour}:${String(minute).padStart(2, "0")}`;
 }
 
+function getDeadlineDate(dueMonth, dueDay, dueHour = "11:59", dueAmPm = "PM") {
+  if (!dueMonth || !dueDay) return null;
+  const normalizedTime = normalizeDueTime(dueHour) || "11:59";
+  const [hourText, minuteText] = normalizedTime.split(":");
+  let hour = Number(hourText) % 12;
+  if ((dueAmPm || "PM") === "PM") hour += 12;
+  const now = new Date();
+  const result = new Date(
+    now.getFullYear(),
+    Number(dueMonth) - 1,
+    Number(dueDay),
+    hour,
+    Number(minuteText),
+  );
+  return Number.isNaN(result.getTime()) ? null : result;
+}
+
+function getEffectiveDeadline(task) {
+  const deadlines = [
+    getDeadlineDate(task?.dueMonth, task?.dueDay, task?.dueHour, task?.dueAmPm),
+    ...getSafeSubtasks(task)
+      .filter((subtask) => !subtask.isDone)
+      .map((subtask) =>
+        getDeadlineDate(
+          subtask.dueMonth,
+          subtask.dueDay,
+          subtask.dueHour,
+          subtask.dueAmPm,
+        ),
+      ),
+  ].filter(Boolean);
+  if (deadlines.length === 0) return null;
+  return new Date(Math.min(...deadlines.map((deadline) => deadline.getTime())));
+}
+
 /**
  * Convert a stored month/day into a friendly urgency group.
  *
- * TaskAcadia currently stores month and day, but not a year. For that reason,
+ * TaskCabinet currently stores month and day, but not a year. For that reason,
  * this helper compares every task with the current calendar year. The exact
  * returned strings are also used by filtering, sorting, counts, and headings,
  * so update those related features together if these labels ever change.
@@ -122,7 +401,44 @@ function getSafeSubtasks(task) {
     id: subtask.id ?? `${task.id || "task"}-step-${index}`,
     text: subtask.text || "",
     isDone: Boolean(subtask.isDone),
+    dueMonth: subtask.dueMonth || "",
+    dueDay: subtask.dueDay || "",
+    dueHour: subtask.dueHour || "",
+    dueAmPm: subtask.dueAmPm || "PM",
   }));
+}
+
+function getSafeLinks(task) {
+  if (!Array.isArray(task?.links)) return [];
+  return task.links.map((link, index) => ({
+    id: link.id ?? `${task.id || "task"}-link-${index}`,
+    name: link.name || "",
+    url: link.url || "",
+  }));
+}
+
+function getSafeAttachments(task) {
+  if (!Array.isArray(task?.attachments)) return [];
+  return task.attachments.map((attachment, index) => ({
+    id: attachment.id ?? `${task.id || "task"}-attachment-${index}`,
+    name: attachment.name || "File",
+    type: attachment.type || "application/octet-stream",
+    size: Number(attachment.size) || 0,
+  }));
+}
+
+function normalizeWebUrl(value) {
+  const candidate = /^https?:\/\//i.test(value.trim())
+    ? value.trim()
+    : `https://${value.trim()}`;
+  try {
+    const url = new URL(candidate);
+    return url.protocol === "http:" || url.protocol === "https:"
+      ? url.toString()
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -160,7 +476,7 @@ function getSubtaskProgress(task) {
  * Build one checklist step from user-entered text.
  * Empty text returns null so blank steps are quietly ignored.
  */
-function createSubtask(text) {
+function createSubtask(text, deadline = {}) {
   const trimmedText = text.trim();
 
   if (!trimmedText) return null;
@@ -169,6 +485,10 @@ function createSubtask(text) {
     id: Date.now() + Math.floor(Math.random() * 1000),
     text: trimmedText,
     isDone: false,
+    dueMonth: deadline.dueMonth || "",
+    dueDay: deadline.dueDay || "",
+    dueHour: deadline.dueHour || "",
+    dueAmPm: deadline.dueAmPm || "PM",
   };
 }
 
@@ -248,6 +568,7 @@ function getNextRepeatingTask(task) {
       ...subtask,
       isDone: false,
     })),
+    copyGroupId: task.copyGroupId || task.id,
     createdFromRepeat: task.id,
   };
 }
@@ -262,17 +583,24 @@ function App() {
   // ---------------------------------------------------------------------------
   // USER PROFILE AND STORAGE NAMESPACES
   // ---------------------------------------------------------------------------
-  // currentUser is an empty string in guest mode. The function passed to
-  // useState runs only during the first render and restores the last profile.
+  // Only an authenticated account may restore a profile. Older passwordless
+  // currentUser values are deliberately ignored until that profile is claimed.
   const [currentUser, setCurrentUser] = useState(() => {
     try {
-      return localStorage.getItem("currentUser") || "";
+      const authenticatedUser = localStorage.getItem(AUTH_USER_STORAGE_KEY) || "";
+      const account = getStoredAccounts()[authenticatedUser.toLowerCase()];
+      return account?.profileKey || "";
     } catch (error) {
       console.error("Error reading currentUser from localStorage:", error);
       return "";
     }
   });
   const [signInName, setSignInName] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authPasswordConfirm, setAuthPasswordConfirm] = useState("");
+  const [authMode, setAuthMode] = useState("signin");
+  const [authError, setAuthError] = useState("");
+  const [authBusy, setAuthBusy] = useState(false);
 
   // A username becomes part of each key. This keeps one user's data separate
   // from another user's data while still using the same browser localStorage.
@@ -334,6 +662,7 @@ function App() {
   // These are "controlled inputs": each input displays a state value and uses
   // its onChange handler to put the user's latest typing back into that state.
   const [taskName, setTaskName] = useState("");
+  const [category, setCategory] = useState("School");
   const [selectedCourse, setSelectedCourse] = useState("");
   const [dueMonth, setDueMonth] = useState("");
   const [dueDay, setDueDay] = useState("");
@@ -343,7 +672,16 @@ function App() {
   const [priority, setPriority] = useState("MED");
   const [repeatFrequency, setRepeatFrequency] = useState("NONE");
   const [newSubtaskText, setNewSubtaskText] = useState("");
+  const [newSubtaskDueMonth, setNewSubtaskDueMonth] = useState("");
+  const [newSubtaskDueDay, setNewSubtaskDueDay] = useState("");
+  const [newSubtaskDueHour, setNewSubtaskDueHour] = useState("");
+  const [newSubtaskDueAmPm, setNewSubtaskDueAmPm] = useState("PM");
   const [draftSubtasks, setDraftSubtasks] = useState([]);
+  const [newLinkName, setNewLinkName] = useState("");
+  const [newLinkUrl, setNewLinkUrl] = useState("");
+  const [draftLinkMessage, setDraftLinkMessage] = useState("");
+  const [draftLinks, setDraftLinks] = useState([]);
+  const [draftFiles, setDraftFiles] = useState([]);
 
   // ---------------------------------------------------------------------------
   // TASK DATA, NAVIGATION, FILTERS, AND OPEN/CLOSED PANELS
@@ -359,14 +697,38 @@ function App() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCourse, setFilterCourse] = useState("ALL");
   const [filterPriority, setFilterPriority] = useState("ALL");
+  const [filterCategory, setFilterCategory] = useState("ALL");
   const [filterDueBucket, setFilterDueBucket] = useState("ALL");
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
   const [editSubtaskText, setEditSubtaskText] = useState("");
+  const [editSubtaskDueMonth, setEditSubtaskDueMonth] = useState("");
+  const [editSubtaskDueDay, setEditSubtaskDueDay] = useState("");
+  const [editSubtaskDueHour, setEditSubtaskDueHour] = useState("");
+  const [editSubtaskDueAmPm, setEditSubtaskDueAmPm] = useState("PM");
+  const [editLinkName, setEditLinkName] = useState("");
+  const [editLinkUrl, setEditLinkUrl] = useState("");
+  const [editLinkMessage, setEditLinkMessage] = useState("");
+  const [pendingEditFiles, setPendingEditFiles] = useState([]);
+  const [removedEditAttachmentIds, setRemovedEditAttachmentIds] = useState([]);
+  const [copyingTask, setCopyingTask] = useState(null);
+  const [copyDates, setCopyDates] = useState([]);
+  const [copyResult, setCopyResult] = useState("");
+  const [copyCycleFilter, setCopyCycleFilter] = useState("ALL");
+  const [copyCalendarStart, setCopyCalendarStart] = useState(
+    () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+  );
+  const [newCycleDayName, setNewCycleDayName] = useState("");
   const [filterRepeat, setFilterRepeat] = useState("ALL");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [addAssignmentOpen, setAddAssignmentOpen] = useState(true);
   const [courseColorsOpen, setCourseColorsOpen] = useState(true);
+  const [settingsSection, setSettingsSection] = useState("personalization");
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [isStandalone, setIsStandalone] = useState(() =>
+    window.matchMedia?.("(display-mode: standalone)").matches ||
+    window.navigator.standalone === true,
+  );
 
   // ---------------------------------------------------------------------------
   // COLOR THEME
@@ -444,7 +806,7 @@ function App() {
         ? ` | 🔁 Repeats: ${formatRepeatLabel(task.repeat)}`
         : "";
 
-    return `📅 Due: ${dateLabel} at ${timeLabel} | ⏱️ Est: ${task.estimatedMinutes || 0} mins | ⚠️ Priority: ${task.priority}${repeatLabel}`;
+    return `${getTaskCategory(task)} | 📅 Due: ${dateLabel} at ${timeLabel} | ⏱️ Est: ${task.estimatedMinutes || 0} mins | ⚠️ Priority: ${task.priority}${repeatLabel}`;
   };
 
   // ---------------------------------------------------------------------------
@@ -461,8 +823,127 @@ function App() {
     }
   }, [theme]);
 
+  useEffect(() => {
+    const rootStyle = document.documentElement.style;
+    Object.values(COLOR_CSS_VARIABLES).flat().forEach((variable) => {
+      rootStyle.removeProperty(variable);
+    });
+    let activeColors = userSettings.customColors || {};
+    try {
+      if (currentUser) {
+        localStorage.setItem(LOGIN_COLORS_STORAGE_KEY, JSON.stringify(activeColors));
+      } else {
+        activeColors = JSON.parse(localStorage.getItem(LOGIN_COLORS_STORAGE_KEY) || "{}");
+      }
+    } catch (error) {
+      console.error("Could not load login-screen colors:", error);
+    }
+    Object.entries(activeColors).forEach(([key, value]) => {
+      if (!/^#[0-9a-f]{6}$/i.test(value)) return;
+      (COLOR_CSS_VARIABLES[key] || []).forEach((variable) => {
+        rootStyle.setProperty(variable, value);
+      });
+    });
+  }, [currentUser, theme, userSettings.customColors]);
+
+  useEffect(() => {
+    const handleInstallPrompt = (event) => {
+      event.preventDefault();
+      setInstallPrompt(event);
+    };
+    const handleInstalled = () => {
+      setInstallPrompt(null);
+      setIsStandalone(true);
+    };
+    window.addEventListener("beforeinstallprompt", handleInstallPrompt);
+    window.addEventListener("appinstalled", handleInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleInstallPrompt);
+      window.removeEventListener("appinstalled", handleInstalled);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (
+      !currentUser ||
+      !userSettings.notificationsEnabled ||
+      !("Notification" in window) ||
+      Notification.permission !== "granted"
+    ) {
+      return undefined;
+    }
+
+    const checkReminders = async () => {
+      const now = Date.now();
+      const reminderWindow = Number(userSettings.reminderMinutes || 60) * 60000;
+      const notificationKey = `taskacadia_notified_${currentUser}`;
+      let notified = {};
+      try {
+        notified = JSON.parse(localStorage.getItem(notificationKey) || "{}");
+      } catch {
+        notified = {};
+      }
+
+      const upcomingTasks = tasks.filter((task) => {
+        if (task.isArchived || task.isDeleted || getTaskStatus(task) === "completed") return false;
+        const deadline = getEffectiveDeadline(task);
+        if (!deadline) return false;
+        const difference = deadline.getTime() - now;
+        const notificationId = `${task.id}-${deadline.getTime()}`;
+        return difference >= 0 && difference <= reminderWindow && !notified[notificationId];
+      });
+
+      for (const task of upcomingTasks) {
+        const deadline = getEffectiveDeadline(task);
+        const options = {
+          body: `${task.course || task.category || "Task"} · due ${deadline.toLocaleString()}`,
+          icon: "/favicon.svg",
+          tag: `taskacadia-${currentUser}-${task.id}`,
+        };
+        try {
+          if (navigator.serviceWorker?.controller) {
+            const registration = await navigator.serviceWorker.ready;
+            await registration.showNotification(`TaskCabinet: ${task.title}`, options);
+          } else {
+            new Notification(`TaskCabinet: ${task.title}`, options);
+          }
+          notified[`${task.id}-${deadline.getTime()}`] = new Date().toISOString();
+        } catch (error) {
+          console.error("Could not show assignment notification:", error);
+        }
+      }
+      localStorage.setItem(notificationKey, JSON.stringify(notified));
+    };
+
+    checkReminders();
+    const intervalId = window.setInterval(checkReminders, 60000);
+    return () => window.clearInterval(intervalId);
+  }, [currentUser, tasks, userSettings.notificationsEnabled, userSettings.reminderMinutes]);
+
   const toggleTheme = () => {
     setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
+  };
+
+  const handleInstallApp = async () => {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    await installPrompt.userChoice;
+    setInstallPrompt(null);
+  };
+
+  const handleNotificationSettingChange = async (isEnabled) => {
+    if (!("Notification" in window)) {
+      alert("This browser does not support notifications.");
+      return;
+    }
+    if (isEnabled) {
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        alert("Notifications were not enabled. You can change browser permissions later.");
+        return;
+      }
+    }
+    handleAddFieldSettingChange("notificationsEnabled", isEnabled);
   };
 
   const handleAddFieldSettingChange = (field, isEnabled) => {
@@ -481,6 +962,54 @@ function App() {
     if (!isEnabled && field === "showPriority") setPriority("MED");
     if (!isEnabled && field === "showRepeat") setRepeatFrequency("NONE");
     if (!isEnabled && field === "showEstimatedMinutes") setEstTime("");
+  };
+
+  const handleCustomColorChange = (key, value) => {
+    handleAddFieldSettingChange("customColors", {
+      ...(userSettings.customColors || {}),
+      [key]: value,
+    });
+  };
+
+  const handleAddCycleDay = () => {
+    const name = newCycleDayName.trim();
+    const dayNames = userSettings.cycleDayNames || ["A Day", "B Day"];
+    if (!name || dayNames.some((item) => item.toLowerCase() === name.toLowerCase())) return;
+    handleAddFieldSettingChange("cycleDayNames", [...dayNames, name]);
+    setNewCycleDayName("");
+  };
+
+  const handleRemoveCycleDay = (dayName) => {
+    const dayNames = userSettings.cycleDayNames || ["A Day", "B Day"];
+    if (dayNames.length <= 2) {
+      alert("Keep at least two school-day labels.");
+      return;
+    }
+    handleAddFieldSettingChange(
+      "cycleDayNames",
+      dayNames.filter((item) => item !== dayName),
+    );
+    const updatedMapping = Object.fromEntries(
+      Object.entries(userSettings.courseCycleDays || {}).map(([course, days]) => [
+        course,
+        Array.isArray(days) ? days.filter((item) => item !== dayName) : [],
+      ]),
+    );
+    handleAddFieldSettingChange("courseCycleDays", updatedMapping);
+  };
+
+  const handleCourseCycleDayToggle = (course, dayName, isChecked) => {
+    const mapping = userSettings.courseCycleDays || {};
+    const currentDays = Array.isArray(mapping[course])
+      ? mapping[course]
+      : userSettings.cycleDayNames || ["A Day", "B Day"];
+    const updatedDays = isChecked
+      ? [...new Set([...currentDays, dayName])]
+      : currentDays.filter((item) => item !== dayName);
+    handleAddFieldSettingChange("courseCycleDays", {
+      ...mapping,
+      [course]: updatedDays,
+    });
   };
 
   // Whenever the active profile changes, load that profile's saved datasets.
@@ -555,12 +1084,94 @@ function App() {
 
   /** Add one optional checklist step to the unsaved Add Assignment form. */
   const handleAddDraftSubtask = () => {
-    const newSubtask = createSubtask(newSubtaskText);
+    const hasAnyDeadline = Boolean(
+      newSubtaskDueMonth || newSubtaskDueDay || newSubtaskDueHour,
+    );
+    const normalizedTime = normalizeDueTime(newSubtaskDueHour);
+    if (
+      hasAnyDeadline &&
+      (!newSubtaskDueMonth || !newSubtaskDueDay || !normalizedTime)
+    ) {
+      alert("Choose a checklist month, day, and valid time together.");
+      return;
+    }
+    const newSubtask = createSubtask(newSubtaskText, {
+      dueMonth: newSubtaskDueMonth,
+      dueDay: newSubtaskDueDay,
+      dueHour: hasAnyDeadline ? normalizedTime : "",
+      dueAmPm: newSubtaskDueAmPm,
+    });
 
     if (!newSubtask) return;
 
     setDraftSubtasks((prev) => [...prev, newSubtask]);
     setNewSubtaskText("");
+    setNewSubtaskDueMonth("");
+    setNewSubtaskDueDay("");
+    setNewSubtaskDueHour("");
+    setNewSubtaskDueAmPm("PM");
+  };
+
+  const handleAddDraftLink = () => {
+    const name = newLinkName.trim();
+    const url = normalizeWebUrl(newLinkUrl);
+    if (!name && !newLinkUrl.trim()) {
+      setDraftLinkMessage("");
+      return false;
+    }
+    if (!name || !newLinkUrl.trim()) {
+      setDraftLinkMessage("Enter both a link name and web address.");
+      return false;
+    }
+    if (!url) {
+      setDraftLinkMessage("Enter a valid http/https web address.");
+      return false;
+    }
+    const isDuplicate = draftLinks.some(
+      (link) =>
+        link.name.trim().toLowerCase() === name.toLowerCase() &&
+        normalizeWebUrl(link.url) === url,
+    );
+    if (isDuplicate) {
+      setDraftLinkMessage("That link is already in the links list.");
+      return false;
+    }
+    setDraftLinks((prev) => [
+      ...prev,
+      { id: Date.now() + Math.random(), name, url },
+    ]);
+    setNewLinkName("");
+    setNewLinkUrl("");
+    setDraftLinkMessage(`Added “${name}” to the links list.`);
+    return true;
+  };
+
+  const handleFileSelection = (fileList, setter) => {
+    const files = Array.from(fileList || []);
+    const accepted = files.filter((file) => file.size <= 10 * 1024 * 1024);
+    if (accepted.length !== files.length) {
+      alert("Files larger than 10 MB were skipped.");
+    }
+    setter((prev) => [...prev, ...accepted]);
+  };
+
+  const handleAttachmentDownload = async (attachment) => {
+    try {
+      const blob = await getAttachmentFile(attachment.id);
+      if (!blob) {
+        alert("This local file is no longer available in this browser.");
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = attachment.name;
+      anchor.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      console.error("Failed to open attachment:", error);
+      alert("This browser could not open the attachment.");
+    }
   };
 
   /** Remove one optional checklist step before the assignment is saved. */
@@ -571,22 +1182,31 @@ function App() {
   };
 
   /** Add one task, optionally add its custom course, and reset the form. */
-  const handleAddTask = (e) => {
+  const handleAddTask = async (e) => {
     e.preventDefault();
 
-    const finalCourse = isCustomCourse
-      ? customCourseName.trim()
-      : selectedCourse;
+    const finalCourse = category === "School"
+      ? isCustomCourse
+        ? customCourseName.trim()
+        : selectedCourse
+      : category;
     const normalizedDueTime = normalizeDueTime(dueHour);
 
     if (!taskName || !finalCourse) return;
+
+    if (newLinkName.trim() || newLinkUrl.trim()) {
+      setDraftLinkMessage(
+        "Finish both link fields and leave the field so the link can be added before saving.",
+      );
+      return;
+    }
 
     if (!normalizedDueTime) {
       alert("Enter a due time from 1:00 through 12:59.");
       return;
     }
 
-    if (isCustomCourse && !courses.includes(finalCourse)) {
+    if (category === "School" && isCustomCourse && !courses.includes(finalCourse)) {
       const updatedCourses = [...courses, finalCourse].sort();
       setCourses(updatedCourses);
       try {
@@ -596,9 +1216,26 @@ function App() {
       }
     }
 
+    const newTaskId = Date.now();
+    let attachments;
+    try {
+      attachments = await Promise.all(
+        draftFiles.map(async (file, index) => {
+          const id = `${newTaskId}-file-${index}-${Math.random().toString(36).slice(2)}`;
+          await putAttachmentFile(id, file);
+          return { id, name: file.name, type: file.type, size: file.size };
+        }),
+      );
+    } catch (error) {
+      console.error("Failed to save attachment:", error);
+      alert("The selected file could not be stored in this browser.");
+      return;
+    }
+
     const newTask = {
-      id: Date.now(),
+      id: newTaskId,
       title: taskName,
+      category,
       course: finalCourse,
       dueMonth: dueMonth,
       dueDay: dueDay,
@@ -611,6 +1248,8 @@ function App() {
       status: "todo",
       notes: "",
       subtasks: draftSubtasks,
+      links: draftLinks,
+      attachments,
     };
 
     setTasks((prev) => {
@@ -625,6 +1264,7 @@ function App() {
 
     // Return the form to friendly defaults after a successful submission.
     setTaskName("");
+    setCategory("School");
     setSelectedCourse("");
     setCustomCourseName("");
     setIsCustomCourse(false);
@@ -637,6 +1277,15 @@ function App() {
     setRepeatFrequency("NONE");
     setNewSubtaskText("");
     setDraftSubtasks([]);
+    setNewSubtaskDueMonth("");
+    setNewSubtaskDueDay("");
+    setNewSubtaskDueHour("");
+    setNewSubtaskDueAmPm("PM");
+    setNewLinkName("");
+    setNewLinkUrl("");
+    setDraftLinks([]);
+    setDraftLinkMessage("");
+    setDraftFiles([]);
 
     if (currentTab === "calendar") {
       setCalendarAddOpen(false);
@@ -758,7 +1407,18 @@ function App() {
 
     const nextRepeatingTask = getNextRepeatingTask(taskToComplete);
 
-    return nextRepeatingTask
+    const repeatingDateAlreadyExists = nextRepeatingTask
+      ? completedTasks.some((task) => {
+          const taskGroupId = task.copyGroupId || task.id;
+          return (
+            String(taskGroupId) === String(nextRepeatingTask.copyGroupId) &&
+            Number(task.dueMonth) === Number(nextRepeatingTask.dueMonth) &&
+            Number(task.dueDay) === Number(nextRepeatingTask.dueDay)
+          );
+        })
+      : false;
+
+    return nextRepeatingTask && !repeatingDateAlreadyExists
       ? [...completedTasks, nextRepeatingTask]
       : completedTasks;
   };
@@ -961,6 +1621,18 @@ function App() {
 
     if (!confirmed) return;
 
+    const remainingTasks = tasks.filter((task) => task.id !== id);
+    getSafeAttachments(taskToDelete).forEach((attachment) => {
+      const isStillReferenced = remainingTasks.some((task) =>
+        getSafeAttachments(task).some((item) => item.id === attachment.id),
+      );
+      if (!isStillReferenced) {
+        deleteAttachmentFile(attachment.id).catch((error) =>
+          console.error("Failed to remove attachment file:", error),
+        );
+      }
+    });
+
     setTasks((prev) => {
       const updated = prev.filter((task) => task.id !== id);
       saveTasksForCurrentUser(updated);
@@ -978,6 +1650,21 @@ function App() {
 
     if (!confirmed) return;
 
+    const remainingTasks = tasks.filter((task) => !task.isDeleted);
+    tasks
+      .filter((task) => task.isDeleted)
+      .flatMap((task) => getSafeAttachments(task))
+      .forEach((attachment) => {
+        const isStillReferenced = remainingTasks.some((task) =>
+          getSafeAttachments(task).some((item) => item.id === attachment.id),
+        );
+        if (!isStillReferenced) {
+          deleteAttachmentFile(attachment.id).catch((error) =>
+            console.error("Failed to remove attachment file:", error),
+          );
+        }
+      });
+
     setTasks((prev) => {
       const updated = prev.filter((task) => !task.isDeleted);
       saveTasksForCurrentUser(updated);
@@ -992,15 +1679,23 @@ function App() {
     setEditingTask({
       ...task,
       title: task.title || "",
+      category: getTaskCategory(task),
       status: getTaskStatus(task),
       repeat: task.repeat || "NONE",
       notes: task.notes || "",
       subtasks: getSafeSubtasks(task),
+      links: getSafeLinks(task),
+      attachments: getSafeAttachments(task),
       estimatedMinutes: task.estimatedMinutes || "",
       dueHour: normalizeDueTime(task.dueHour) || "11:00",
       dueAmPm: task.dueAmPm || "PM",
     });
     setEditSubtaskText("");
+    setEditLinkName("");
+    setEditLinkUrl("");
+    setEditLinkMessage("");
+    setPendingEditFiles([]);
+    setRemovedEditAttachmentIds([]);
   };
 
   // One generic field handler works for every input in the edit modal.
@@ -1013,7 +1708,23 @@ function App() {
 
   /** Add a checklist step while editing an existing assignment. */
   const handleAddEditSubtask = () => {
-    const newSubtask = createSubtask(editSubtaskText);
+    const hasAnyDeadline = Boolean(
+      editSubtaskDueMonth || editSubtaskDueDay || editSubtaskDueHour,
+    );
+    const normalizedTime = normalizeDueTime(editSubtaskDueHour);
+    if (
+      hasAnyDeadline &&
+      (!editSubtaskDueMonth || !editSubtaskDueDay || !normalizedTime)
+    ) {
+      alert("Choose a checklist month, day, and valid time together.");
+      return;
+    }
+    const newSubtask = createSubtask(editSubtaskText, {
+      dueMonth: editSubtaskDueMonth,
+      dueDay: editSubtaskDueDay,
+      dueHour: hasAnyDeadline ? normalizedTime : "",
+      dueAmPm: editSubtaskDueAmPm,
+    });
 
     if (!newSubtask) return;
 
@@ -1022,6 +1733,10 @@ function App() {
       subtasks: [...getSafeSubtasks(prev), newSubtask],
     }));
     setEditSubtaskText("");
+    setEditSubtaskDueMonth("");
+    setEditSubtaskDueDay("");
+    setEditSubtaskDueHour("");
+    setEditSubtaskDueAmPm("PM");
   };
 
   /** Rename a checklist step in the temporary edit-modal copy. */
@@ -1032,6 +1747,49 @@ function App() {
         subtask.id === subtaskId ? { ...subtask, text } : subtask,
       ),
     }));
+  };
+
+  const handleEditSubtaskFieldChange = (subtaskId, field, value) => {
+    setEditingTask((prev) => ({
+      ...prev,
+      subtasks: getSafeSubtasks(prev).map((subtask) =>
+        subtask.id === subtaskId ? { ...subtask, [field]: value } : subtask,
+      ),
+    }));
+  };
+
+  const handleAddEditLink = () => {
+    const name = editLinkName.trim();
+    const url = normalizeWebUrl(editLinkUrl);
+    if (!name && !editLinkUrl.trim()) {
+      setEditLinkMessage("");
+      return false;
+    }
+    if (!name || !editLinkUrl.trim()) {
+      setEditLinkMessage("Enter both a link name and web address.");
+      return false;
+    }
+    if (!url) {
+      setEditLinkMessage("Enter a valid http/https web address.");
+      return false;
+    }
+    const isDuplicate = getSafeLinks(editingTask).some(
+      (link) =>
+        link.name.trim().toLowerCase() === name.toLowerCase() &&
+        normalizeWebUrl(link.url) === url,
+    );
+    if (isDuplicate) {
+      setEditLinkMessage("That link is already in the links list.");
+      return false;
+    }
+    setEditingTask((prev) => ({
+      ...prev,
+      links: [...getSafeLinks(prev), { id: Date.now() + Math.random(), name, url }],
+    }));
+    setEditLinkName("");
+    setEditLinkUrl("");
+    setEditLinkMessage(`Added “${name}” to the links list.`);
+    return true;
   };
 
   /** Toggle a checklist step in the temporary edit-modal copy. */
@@ -1057,15 +1815,43 @@ function App() {
   };
 
   // Validate the title, update the matching task, save, and close the modal.
-  const handleEditSave = () => {
+  const handleEditSave = async () => {
     if (!editingTask) return;
 
+    if (editLinkName.trim() || editLinkUrl.trim()) {
+      setEditLinkMessage(
+        "Finish both link fields and leave the field so the link can be added before saving.",
+      );
+      return;
+    }
+
     const cleanedTitle = editingTask.title.trim();
-    const cleanedCourse = editingTask.course || "Other";
+    const cleanedCourse =
+      getTaskCategory(editingTask) === "School"
+        ? editingTask.course || "Other"
+        : getTaskCategory(editingTask);
     const normalizedDueTime = normalizeDueTime(editingTask.dueHour);
     const cleanedSubtasks = getSafeSubtasks(editingTask).filter((subtask) =>
       subtask.text.trim(),
     );
+    const rawLinks = getSafeLinks(editingTask);
+    const hasInvalidLink = rawLinks.some(
+      (link) => !link.name.trim() || !normalizeWebUrl(link.url),
+    );
+    const cleanedLinks = rawLinks.map((link) => ({
+      ...link,
+      name: link.name.trim(),
+      url: normalizeWebUrl(link.url),
+    }));
+    const hasInvalidSubtaskDeadline = cleanedSubtasks.some((subtask) => {
+      const hasAny = subtask.dueMonth || subtask.dueDay || subtask.dueHour;
+      return (
+        hasAny &&
+        (!subtask.dueMonth ||
+          !subtask.dueDay ||
+          !normalizeDueTime(subtask.dueHour))
+      );
+    });
     const shouldAutoCompleteFromSubtasks =
       cleanedSubtasks.length > 0 &&
       cleanedSubtasks.every((subtask) => subtask.isDone);
@@ -1082,6 +1868,32 @@ function App() {
       return;
     }
 
+    if (hasInvalidSubtaskDeadline) {
+      alert("Each checklist deadline needs a month, day, and valid time.");
+      return;
+    }
+
+
+    if (hasInvalidLink) {
+      alert("Each assignment link needs a name and a valid http/https address.");
+      return;
+    }
+
+    let addedAttachments;
+    try {
+      addedAttachments = await Promise.all(
+        pendingEditFiles.map(async (file, index) => {
+          const id = `${editingTaskId}-file-${Date.now()}-${index}-${Math.random().toString(36).slice(2)}`;
+          await putAttachmentFile(id, file);
+          return { id, name: file.name, type: file.type, size: file.size };
+        }),
+      );
+    } catch (error) {
+      console.error("Failed to save attachment:", error);
+      alert("The selected file could not be stored in this browser.");
+      return;
+    }
+
     const updatedTask = {
       ...editingTask,
       title: cleanedTitle,
@@ -1091,6 +1903,8 @@ function App() {
       isCompleted,
       status: isCompleted ? "completed" : getTaskStatus(editingTask),
       subtasks: cleanedSubtasks,
+      links: cleanedLinks,
+      attachments: [...getSafeAttachments(editingTask), ...addedAttachments],
     };
 
     setTasks((prev) => {
@@ -1104,6 +1918,21 @@ function App() {
 
     setEditingTaskId(null);
     setEditingTask(null);
+    setPendingEditFiles([]);
+
+    removedEditAttachmentIds.forEach((attachmentId) => {
+      const isStillReferenced = tasks.some(
+        (task) =>
+          task.id !== editingTaskId &&
+          getSafeAttachments(task).some((attachment) => attachment.id === attachmentId),
+      );
+      if (!isStillReferenced) {
+        deleteAttachmentFile(attachmentId).catch((error) =>
+          console.error("Failed to remove attachment file:", error),
+        );
+      }
+    });
+    setRemovedEditAttachmentIds([]);
   };
 
   // Canceling discards the temporary editing copy without changing tasks.
@@ -1111,19 +1940,85 @@ function App() {
     setEditingTaskId(null);
     setEditingTask(null);
     setEditSubtaskText("");
+    setEditLinkName("");
+    setEditLinkUrl("");
+    setEditLinkMessage("");
+    setPendingEditFiles([]);
+    setRemovedEditAttachmentIds([]);
   };
 
-  // Usernames are local profile names, not server-backed authentication.
-  const handleSignIn = (e) => {
+  const handleAuthSubmit = async (e) => {
     e.preventDefault();
     const trimmedName = signInName.trim();
-    if (!trimmedName) return;
-    setCurrentUser(trimmedName);
-    setSignInName("");
-    setCurrentTab("dashboard");
+    const normalizedName = trimmedName.toLowerCase();
+    setAuthError("");
+
+    if (!trimmedName || !authPassword) {
+      setAuthError("Enter both a username and password.");
+      return;
+    }
+    if (authMode === "signup" && authPassword.length < 8) {
+      setAuthError("Passwords must contain at least 8 characters.");
+      return;
+    }
+    if (authMode === "signup" && authPassword !== authPasswordConfirm) {
+      setAuthError("The password confirmation does not match.");
+      return;
+    }
+
+    setAuthBusy(true);
+    try {
+      const accounts = getStoredAccounts();
+      const existingAccount = accounts[normalizedName];
+
+      if (authMode === "signin") {
+        if (!existingAccount) {
+          setAuthError("No local account was found for that username.");
+          return;
+        }
+        const verifier = await derivePasswordVerifier(
+          authPassword,
+          base64ToBytes(existingAccount.salt),
+        );
+        if (verifier !== existingAccount.verifier) {
+          setAuthError("Incorrect password.");
+          return;
+        }
+        localStorage.setItem(AUTH_USER_STORAGE_KEY, normalizedName);
+        setCurrentUser(existingAccount.profileKey);
+      } else {
+        if (existingAccount) {
+          setAuthError("That username already has a local account.");
+          return;
+        }
+        const salt = crypto.getRandomValues(new Uint8Array(16));
+        const verifier = await derivePasswordVerifier(authPassword, salt);
+        const profileKey = findLegacyProfileKey(trimmedName) || trimmedName;
+        accounts[normalizedName] = {
+          username: trimmedName,
+          profileKey,
+          salt: bytesToBase64(salt),
+          verifier,
+        };
+        localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts));
+        localStorage.setItem(AUTH_USER_STORAGE_KEY, normalizedName);
+        setCurrentUser(profileKey);
+      }
+
+      setSignInName("");
+      setAuthPassword("");
+      setAuthPasswordConfirm("");
+      setCurrentTab("dashboard");
+    } catch (error) {
+      console.error("Local account error:", error);
+      setAuthError("This browser could not save or verify the local account.");
+    } finally {
+      setAuthBusy(false);
+    }
   };
 
   const handleSignOut = () => {
+    localStorage.removeItem(AUTH_USER_STORAGE_KEY);
     setCurrentUser("");
     setCurrentTab("dashboard");
   };
@@ -1153,8 +2048,121 @@ function App() {
     });
   };
 
+  const handleCopyStart = (task) => {
+    const startingMonth = task.dueMonth
+      ? Number(task.dueMonth) - 1
+      : new Date().getMonth();
+    setCopyingTask(task);
+    setCopyDates([]);
+    setCopyCycleFilter("ALL");
+    setCopyCalendarStart(new Date(new Date().getFullYear(), startingMonth, 1));
+  };
+
+  const handleCopyDateToggle = (date) => {
+    const cycleDay = getCycleDayForDate(date, userSettings);
+    if (copyCycleFilter !== "ALL" && cycleDay !== copyCycleFilter) return;
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const key = `${month}-${day}`;
+    setCopyDates((prev) =>
+      prev.some((item) => item.key === key)
+        ? prev.filter((item) => item.key !== key)
+        : [...prev, { key, month, day, cycleDay: cycleDay || "No cycle day" }],
+    );
+  };
+
+  const handleSelectAllVisibleCycleDates = () => {
+    if (copyCycleFilter === "ALL") return;
+    const year = copyCalendarStart.getFullYear();
+    const monthIndex = copyCalendarStart.getMonth();
+    const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+    const matchingDates = Array.from({ length: daysInMonth }, (_, index) => {
+      const date = new Date(year, monthIndex, index + 1);
+      const cycleDay = getCycleDayForDate(date, userSettings);
+      if (cycleDay !== copyCycleFilter) return null;
+      const month = String(monthIndex + 1).padStart(2, "0");
+      const day = String(index + 1).padStart(2, "0");
+      return { key: `${month}-${day}`, month, day, cycleDay };
+    }).filter(Boolean);
+
+    setCopyDates((prev) => {
+      const existingKeys = new Set(prev.map((item) => item.key));
+      return [
+        ...prev,
+        ...matchingDates.filter((item) => !existingKeys.has(item.key)),
+      ];
+    });
+  };
+
+  const handleCopyConfirm = () => {
+    if (!copyingTask || copyDates.length === 0) return;
+    const copyGroupId = copyingTask.copyGroupId || copyingTask.id;
+    const skipped = [];
+    const created = [];
+
+    copyDates.forEach(({ month, day }) => {
+      const duplicate = tasks.some((task) => {
+        const taskGroupId = task.copyGroupId || task.id;
+        return (
+          String(taskGroupId) === String(copyGroupId) &&
+          Number(task.dueMonth) === Number(month) &&
+          Number(task.dueDay) === Number(day)
+        );
+      });
+      const label = `${monthNames[Number(month) - 1]} ${Number(day)}`;
+      if (duplicate) {
+        skipped.push(label);
+        return;
+      }
+      created.push({
+        ...copyingTask,
+        id: Date.now() + created.length + Math.floor(Math.random() * 100000),
+        copyGroupId,
+        dueMonth: month,
+        dueDay: day,
+        isCompleted: false,
+        status: "todo",
+        isArchived: false,
+        archivedAt: null,
+        isDeleted: false,
+        deletedAt: null,
+        subtasks: getSafeSubtasks(copyingTask).map((subtask) => ({
+          ...subtask,
+          id: Date.now() + Math.random(),
+          isDone: false,
+          dueMonth: "",
+          dueDay: "",
+          dueHour: "",
+          dueAmPm: "PM",
+        })),
+        links: getSafeLinks(copyingTask).map((link) => ({
+          ...link,
+          id: Date.now() + Math.random(),
+        })),
+      });
+    });
+
+    if (created.length > 0) {
+      setTasks((prev) => {
+        const updated = [...prev, ...created];
+        saveTasksForCurrentUser(updated);
+        return updated;
+      });
+    }
+    setCopyResult(
+      `Created ${created.length} ${created.length === 1 ? "copy" : "copies"}.` +
+        (skipped.length > 0
+          ? ` Skipped duplicates: ${skipped.join(", ")}.`
+          : ""),
+    );
+    setCopyingTask(null);
+    setCopyDates([]);
+  };
+
   const isFormInvalid =
-    !taskName || (isCustomCourse ? !customCourseName.trim() : !selectedCourse);
+    !taskName ||
+    (category === "School" &&
+      (isCustomCourse ? !customCourseName.trim() : !selectedCourse));
 
   // ---------------------------------------------------------------------------
   // DERIVED DATA: FILTERING, SORTING, RECOMMENDATIONS, AND COUNTS
@@ -1173,6 +2181,13 @@ function App() {
     "No Due Date",
   ];
 
+  const getTaskDueBucket = (task) => {
+    const deadline = getEffectiveDeadline(task);
+    return deadline
+      ? getDueDateBucket(deadline.getMonth() + 1, deadline.getDate())
+      : "No Due Date";
+  };
+
   // A task must pass every active filter. "ALL" means that particular filter
   // is disabled. Search checks the title, course, and optional notes together.
   const assignmentMatchesFilters = (task) => {
@@ -1183,6 +2198,7 @@ function App() {
       !search ||
       task.title.toLowerCase().includes(search) ||
       task.course.toLowerCase().includes(search) ||
+      getTaskCategory(task).toLowerCase().includes(search) ||
       (task.notes || "").toLowerCase().includes(search);
 
     const matchesCourse =
@@ -1190,8 +2206,10 @@ function App() {
 
     const matchesPriority =
       filterPriority === "ALL" || task.priority === filterPriority;
+    const matchesCategory =
+      filterCategory === "ALL" || getTaskCategory(task) === filterCategory;
 
-    const taskBucket = getDueDateBucket(task.dueMonth, task.dueDay);
+    const taskBucket = getTaskDueBucket(task);
 
     const matchesDueBucket =
       filterDueBucket === "ALL" || taskBucket === filterDueBucket;
@@ -1200,6 +2218,7 @@ function App() {
       matchesSearch &&
       matchesCourse &&
       matchesPriority &&
+      matchesCategory &&
       matchesDueBucket &&
       matchesRepeat
     );
@@ -1256,6 +2275,18 @@ function App() {
       Number(task.dueMonth) === selectedDate.getMonth() + 1 &&
       Number(task.dueDay) === selectedDate.getDate(),
   );
+  const selectedCycleDay = getCycleDayForDate(selectedDate, userSettings);
+  const selectedCycleCourses = selectedCycleDay
+    ? courses.filter((course) => {
+        const assignedDays = userSettings.courseCycleDays?.[course];
+        return !Array.isArray(assignedDays) || assignedDays.includes(selectedCycleDay);
+      })
+    : [];
+  const selectedCycleCourseTasks = selectedDateTasks.filter(
+    (task) =>
+      getTaskCategory(task) === "School" &&
+      selectedCycleCourses.includes(task.course),
+  );
 
   // To Do and In Progress use the same student-friendly order: urgent first,
   // then high priority, then shorter assignments.
@@ -1263,24 +2294,25 @@ function App() {
     const priorityMap = { HIGH: 3, MED: 2, LOW: 1 };
 
     return [...taskList].sort((a, b) => {
-      const bucketA = bucketsOrder.indexOf(
-        getDueDateBucket(a.dueMonth, a.dueDay),
-      );
-      const bucketB = bucketsOrder.indexOf(
-        getDueDateBucket(b.dueMonth, b.dueDay),
-      );
+      const bucketA = bucketsOrder.indexOf(getTaskDueBucket(a));
+      const bucketB = bucketsOrder.indexOf(getTaskDueBucket(b));
 
       if (bucketA !== bucketB) {
         return bucketA - bucketB;
       }
 
+      const deadlineA = getEffectiveDeadline(a)?.getTime() ?? Infinity;
+      const deadlineB = getEffectiveDeadline(b)?.getTime() ?? Infinity;
+      if (deadlineA !== deadlineB) return deadlineA - deadlineB;
+
       if (priorityMap[b.priority] !== priorityMap[a.priority]) {
         return priorityMap[b.priority] - priorityMap[a.priority];
       }
 
-      return (
+      const estimateDifference =
         (Number(a.estimatedMinutes) || 0) - (Number(b.estimatedMinutes) || 0)
-      );
+      ;
+      return estimateDifference || (a.title || "").localeCompare(b.title || "");
     });
   };
 
@@ -1314,16 +2346,16 @@ function App() {
         getTaskStatus(task) !== "completed",
     )
     .sort((a, b) => {
-      const bucketA = bucketsOrder.indexOf(
-        getDueDateBucket(a.dueMonth, a.dueDay),
-      );
-      const bucketB = bucketsOrder.indexOf(
-        getDueDateBucket(b.dueMonth, b.dueDay),
-      );
+      const bucketA = bucketsOrder.indexOf(getTaskDueBucket(a));
+      const bucketB = bucketsOrder.indexOf(getTaskDueBucket(b));
       const safeBucketA = bucketA === -1 ? bucketsOrder.length : bucketA;
       const safeBucketB = bucketB === -1 ? bucketsOrder.length : bucketB;
 
       if (safeBucketA !== safeBucketB) return safeBucketA - safeBucketB;
+
+      const deadlineA = getEffectiveDeadline(a)?.getTime() ?? Infinity;
+      const deadlineB = getEffectiveDeadline(b)?.getTime() ?? Infinity;
+      if (deadlineA !== deadlineB) return deadlineA - deadlineB;
 
       const priorityA = recommendationPriorityOrder[a.priority] ?? 3;
       const priorityB = recommendationPriorityOrder[b.priority] ?? 3;
@@ -1348,7 +2380,7 @@ function App() {
     }, {});
 
     taskList.forEach((task) => {
-      const bucket = getDueDateBucket(task.dueMonth, task.dueDay);
+      const bucket = getTaskDueBucket(task);
 
       if (grouped[bucket]) {
         grouped[bucket].push(task);
@@ -1367,6 +2399,7 @@ function App() {
     setSearchTerm("");
     setFilterCourse("ALL");
     setFilterPriority("ALL");
+    setFilterCategory("ALL");
     setFilterDueBucket("ALL");
     setFilterRepeat("ALL");
   };
@@ -1419,6 +2452,18 @@ function App() {
         />
 
         <div className="filter-grid">
+          <div>
+            <label>Category:</label>
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+            >
+              <option value="ALL">All Categories</option>
+              {TASK_CATEGORIES.map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
+            </select>
+          </div>
           <div>
             <label>Course:</label>
             <select
@@ -1531,7 +2576,17 @@ function App() {
         </div>
 
         <ul className="subtask-checklist-list">
-          {subtasks.map((subtask) => (
+          {subtasks.map((subtask) => {
+            const deadline = getDeadlineDate(
+              subtask.dueMonth,
+              subtask.dueDay,
+              subtask.dueHour,
+              subtask.dueAmPm,
+            );
+            const bucket = deadline
+              ? getDueDateBucket(deadline.getMonth() + 1, deadline.getDate())
+              : "";
+            return (
             <li key={subtask.id} className="subtask-checklist-item">
               <label>
                 <input
@@ -1542,8 +2597,16 @@ function App() {
                 />
                 <span>{subtask.text}</span>
               </label>
+              {deadline && (
+                <span className="subtask-deadline">
+                  {monthNames[deadline.getMonth()]} {deadline.getDate()} at{" "}
+                  {normalizeDueTime(subtask.dueHour)} {subtask.dueAmPm}
+                  {(bucket === "Overdue 🚨" || bucket === "Due Today ⏰") &&
+                    ` · ${bucket}`}
+                </span>
+              )}
             </li>
-          ))}
+          )})}
         </ul>
 
         {!isReadOnly && (
@@ -1554,6 +2617,77 @@ function App() {
       </div>
     );
   };
+
+  const renderTaskLinks = (task) => {
+    const links = getSafeLinks(task);
+    if (links.length === 0) {
+      return <p className="subtask-form-hint">No links added.</p>;
+    }
+    return (
+      <ul className="task-link-list">
+        {links.map((link) => (
+          <li key={link.id}>
+            <a href={link.url} target="_blank" rel="noopener noreferrer">
+              {link.name}
+            </a>
+          </li>
+        ))}
+      </ul>
+    );
+  };
+
+  const renderTaskAttachments = (task) => {
+    const attachments = getSafeAttachments(task);
+    if (attachments.length === 0) return null;
+    return (
+      <div className="task-attachments-panel">
+        <span className="task-notes-label">Files</span>
+        <ul className="task-link-list">
+          {attachments.map((attachment) => (
+            <li key={attachment.id}>
+              <button type="button" className="attachment-link" onClick={() => handleAttachmentDownload(attachment)}>
+                {attachment.name} ({Math.max(1, Math.round(attachment.size / 1024))} KB)
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  };
+
+  const renderCopyAction = (task) => (
+    <button
+      type="button"
+      className="btn btn-secondary copy-dates-button"
+      onClick={() => handleCopyStart(task)}
+    >
+      Copy to dates
+    </button>
+  );
+
+  const renderExpandedTaskDetails = (task, notesId) => (
+    <>
+      <div className="task-resource-grid">
+        <div className="task-resource-column">
+          <label htmlFor={notesId} className="task-notes-label">Notes</label>
+          <textarea
+            id={notesId}
+            value={task.notes || ""}
+            onChange={(e) => handleNoteChange(task.id, e.target.value)}
+            placeholder="Type notes for this assignment..."
+            className="task-note-input"
+          />
+        </div>
+        <div className="task-resource-column">
+          <span className="task-notes-label">Links</span>
+          {renderTaskLinks(task)}
+        </div>
+      </div>
+      {renderTaskAttachments(task)}
+      {renderSubtaskChecklist(task)}
+      {renderCopyAction(task)}
+    </>
+  );
 
   // Dashboard and Calendar share one form so assignment behavior stays aligned.
   const renderAddAssignmentForm = (formId) => (
@@ -1567,7 +2701,14 @@ function App() {
         onChange={(e) => setTaskName(e.target.value)}
       />
 
-      <div
+      <label>Category:</label>
+      <select value={category} onChange={(e) => setCategory(e.target.value)}>
+        {TASK_CATEGORIES.map((item) => (
+          <option key={item} value={item}>{item}</option>
+        ))}
+      </select>
+
+      {category === "School" && <><div
         style={{
           display: "flex",
           justifyContent: "space-between",
@@ -1611,7 +2752,7 @@ function App() {
             </option>
           ))}
         </select>
-      )}
+      )}</>}
 
       <label>Due Date:</label>
       <div style={{ display: "flex", gap: "8px" }}>
@@ -1636,7 +2777,7 @@ function App() {
         </select>
       </div>
 
-      <label>Due Time (hour or hour:minutes):</label>
+      <label>Due Time:</label>
       <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
         <input
           type="text"
@@ -1698,6 +2839,78 @@ function App() {
         </>
       )}
 
+      <div className="subtask-form-section assignment-links-form">
+        <div>
+          <label>Optional Assignment Links:</label>
+          <p className="subtask-form-hint">Name a website, document, or resource.</p>
+        </div>
+        <div className="link-form-row">
+          <input
+            type="text"
+            placeholder="Link name"
+            value={newLinkName}
+            onChange={(e) => {
+              setNewLinkName(e.target.value);
+              setDraftLinkMessage("");
+            }}
+            onBlur={handleAddDraftLink}
+          />
+          <input
+            type="text"
+            placeholder="example.com/resource"
+            value={newLinkUrl}
+            onChange={(e) => {
+              setNewLinkUrl(e.target.value);
+              setDraftLinkMessage("");
+            }}
+            onBlur={handleAddDraftLink}
+          />
+        </div>
+        <p
+          className={`link-entry-feedback ${draftLinkMessage ? (draftLinkMessage.startsWith("Added") ? "success" : "error") : ""}`}
+          role="status"
+        >
+          {draftLinkMessage || "Complete both fields, then leave the field to add the link automatically."}
+        </p>
+        {draftLinks.length > 0 && (
+          <ul className="subtask-draft-list">
+            {draftLinks.map((link) => (
+              <li key={link.id} className="subtask-draft-item">
+                <span>{link.name} — {link.url}</span>
+                <button
+                  type="button"
+                  className="subtask-remove-button"
+                  onClick={() =>
+                    setDraftLinks((prev) => prev.filter((item) => item.id !== link.id))
+                  }
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="subtask-form-section attachment-form-section">
+        <label>Optional Files:</label>
+        <input
+          type="file"
+          multiple
+          onChange={(e) => {
+            handleFileSelection(e.target.files, setDraftFiles);
+            e.target.value = "";
+          }}
+        />
+        <p className="subtask-form-hint">Stored only in this browser. Maximum 10 MB per file.</p>
+        {draftFiles.map((file, index) => (
+          <div className="attachment-draft-row" key={`${file.name}-${file.lastModified}-${index}`}>
+            <span>{file.name}</span>
+            <button type="button" className="subtask-remove-button" onClick={() => setDraftFiles((prev) => prev.filter((_, itemIndex) => itemIndex !== index))}>Remove</button>
+          </div>
+        ))}
+      </div>
+
       <div className="subtask-form-section">
         <div>
           <label>Optional Checklist Steps:</label>
@@ -1727,6 +2940,43 @@ function App() {
           >
             Add Step
           </button>
+        </div>
+
+        <div className="subtask-deadline-fields">
+          <select
+            aria-label="Checklist due month"
+            value={newSubtaskDueMonth}
+            onChange={(e) => setNewSubtaskDueMonth(e.target.value)}
+          >
+            <option value="">Optional month</option>
+            {monthNames.map((month, index) => (
+              <option key={month} value={String(index + 1).padStart(2, "0")}>{month}</option>
+            ))}
+          </select>
+          <select
+            aria-label="Checklist due day"
+            value={newSubtaskDueDay}
+            onChange={(e) => setNewSubtaskDueDay(e.target.value)}
+          >
+            <option value="">Day</option>
+            {Array.from({ length: 31 }, (_, index) => index + 1).map((day) => (
+              <option key={day} value={String(day).padStart(2, "0")}>{day}</option>
+            ))}
+          </select>
+          <input
+            aria-label="Checklist due time"
+            type="text"
+            placeholder="Time, e.g. 4:30"
+            value={newSubtaskDueHour}
+            onChange={(e) => setNewSubtaskDueHour(e.target.value)}
+          />
+          <select
+            aria-label="Checklist AM or PM"
+            value={newSubtaskDueAmPm}
+            onChange={(e) => setNewSubtaskDueAmPm(e.target.value)}
+          >
+            <option value="AM">AM</option><option value="PM">PM</option>
+          </select>
         </div>
 
         {draftSubtasks.length > 0 && (
@@ -1775,13 +3025,11 @@ function App() {
   const activeTasksCount = activeDashboardTasks.length;
 
   const overdueTasksCount = activeDashboardTasks.filter(
-    (task) =>
-      getDueDateBucket(task.dueMonth, task.dueDay) === "Overdue 🚨",
+    (task) => getTaskDueBucket(task) === "Overdue 🚨",
   ).length;
 
   const dueTodayCount = activeDashboardTasks.filter(
-    (task) =>
-      getDueDateBucket(task.dueMonth, task.dueDay) === "Due Today ⏰",
+    (task) => getTaskDueBucket(task) === "Due Today ⏰",
   ).length;
 
   const totalEstimatedMinutes = activeDashboardTasks
@@ -1790,22 +3038,100 @@ function App() {
   const estimatedHours = Math.floor(totalEstimatedMinutes / 60);
   const estimatedMinutesLeft = totalEstimatedMinutes % 60;
 
+  if (!currentUser) {
+    return (
+      <div className={`App ${theme} auth-screen`}>
+        <main className="auth-card">
+          <p className="eyebrow">Student Productivity Hub</p>
+          <h1 className="app-title">TaskCabinet</h1>
+          <p className="hero-subtitle">
+            {authMode === "signin"
+              ? "Sign in to open your local assignment planner."
+              : "Create a local account or claim an existing username profile."}
+          </p>
+          <div className="auth-mode-tabs">
+            <button
+              type="button"
+              className={`tab-button ${authMode === "signin" ? "active" : ""}`}
+              onClick={() => { setAuthMode("signin"); setAuthError(""); }}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              className={`tab-button ${authMode === "signup" ? "active" : ""}`}
+              onClick={() => { setAuthMode("signup"); setAuthError(""); }}
+            >
+              Sign Up
+            </button>
+          </div>
+          <form className="card-form auth-form" onSubmit={handleAuthSubmit}>
+            <label htmlFor="auth-username">Username</label>
+            <input
+              id="auth-username"
+              autoComplete="username"
+              value={signInName}
+              onChange={(e) => setSignInName(e.target.value)}
+            />
+            <label htmlFor="auth-password">Password</label>
+            <input
+              id="auth-password"
+              type="password"
+              autoComplete={authMode === "signin" ? "current-password" : "new-password"}
+              value={authPassword}
+              onChange={(e) => setAuthPassword(e.target.value)}
+            />
+            {authMode === "signup" && (
+              <>
+                <label htmlFor="auth-confirm">Confirm Password</label>
+                <input
+                  id="auth-confirm"
+                  type="password"
+                  autoComplete="new-password"
+                  value={authPasswordConfirm}
+                  onChange={(e) => setAuthPasswordConfirm(e.target.value)}
+                />
+              </>
+            )}
+            {authError && <p className="auth-error" role="alert">{authError}</p>}
+            <button type="submit" className="btn btn-primary" disabled={authBusy}>
+              {authBusy ? "Working…" : authMode === "signin" ? "Sign In" : "Create Account"}
+            </button>
+          </form>
+          <div className="auth-warning">
+            <strong>Password does not save, save independently!</strong>
+            <p>
+              TaskCabinet stores only a password verifier. Accounts and assignments
+              stay on this browser, do not sync to other devices, and have no
+              password recovery.
+            </p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   // ---------------------------------------------------------------------------
   // USER INTERFACE (JSX)
   // ---------------------------------------------------------------------------
   // JSX resembles HTML but can insert JavaScript inside braces. Expressions
   // such as currentTab === "todo" conditionally show only the selected screen.
+  const schoolLevelCopy =
+    SCHOOL_LEVEL_COPY[userSettings.schoolLevel] || SCHOOL_LEVEL_COPY.high;
+  const activeSettingsSection =
+    SETTINGS_SECTIONS.find((section) => section.id === settingsSection) ||
+    SETTINGS_SECTIONS[0];
+
   return (
-    <div className={`App ${theme}`}>
+    <div className={`App ${theme} school-level-${userSettings.schoolLevel || "high"}`}>
       <div className="app-shell">
         {/* The header is always visible and identifies the active local profile. */}
         <header className="hero-card">
           <div>
-            <p className="eyebrow">Student Productivity Hub</p>
-            <h1 className="app-title">🎓 TaskAcadia</h1>
+            <p className="eyebrow">{schoolLevelCopy.eyebrow}</p>
+            <h1 className="app-title">TaskCabinet</h1>
             <p className="hero-subtitle">
-              Organize assignments, track deadlines, manage courses, and plan
-              your workload.
+              {schoolLevelCopy.subtitle}
             </p>
           </div>
 
@@ -1813,6 +3139,13 @@ function App() {
             {currentUser ? `Signed in as ${currentUser}` : "Guest Mode"}
           </div>
         </header>
+
+        {copyResult && (
+          <div className="copy-result-banner" role="status">
+            <span>{copyResult}</span>
+            <button type="button" onClick={() => setCopyResult("")}>Dismiss</button>
+          </div>
+        )}
 
         {/*
           Navigation changes currentTab. The active class lets CSS highlight the
@@ -1852,13 +3185,6 @@ function App() {
             onClick={() => setCurrentTab("calendar")}
           >
             📅 Calendar
-          </button>
-
-          <button
-            className={`tab-button ${currentTab === "signin" ? "active" : ""}`}
-            onClick={() => setCurrentTab("signin")}
-          >
-            {currentUser ? "Switch User" : "Sign In"}
           </button>
 
           <button
@@ -2250,23 +3576,10 @@ function App() {
                                   className="task-notes-panel"
                                   onClick={(e) => e.stopPropagation()}
                                 >
-                                  <label
-                                    htmlFor={`notes-${task.id}`}
-                                    className="task-notes-label"
-                                  >
-                                    Notes
-                                  </label>
-                                  <textarea
-                                    id={`notes-${task.id}`}
-                                    value={task.notes || ""}
-                                    onChange={(e) =>
-                                      handleNoteChange(task.id, e.target.value)
-                                    }
-                                    placeholder="Type notes for this assignment..."
-                                    className="task-note-input"
-                                  />
-
-                                  {renderSubtaskChecklist(task)}
+                                  {renderExpandedTaskDetails(
+                                    task,
+                                    `notes-${task.id}`,
+                                  )}
                                 </div>
                               )}
                             </li>
@@ -2419,23 +3732,10 @@ function App() {
                                   className="task-notes-panel"
                                   onClick={(e) => e.stopPropagation()}
                                 >
-                                  <label
-                                    htmlFor={`in-progress-notes-${task.id}`}
-                                    className="task-notes-label"
-                                  >
-                                    Notes
-                                  </label>
-                                  <textarea
-                                    id={`in-progress-notes-${task.id}`}
-                                    value={task.notes || ""}
-                                    onChange={(e) =>
-                                      handleNoteChange(task.id, e.target.value)
-                                    }
-                                    placeholder="Type notes for this assignment..."
-                                    className="task-note-input"
-                                  />
-
-                                  {renderSubtaskChecklist(task)}
+                                  {renderExpandedTaskDetails(
+                                    task,
+                                    `in-progress-notes-${task.id}`,
+                                  )}
                                 </div>
                               )}
                             </li>
@@ -2569,23 +3869,7 @@ function App() {
                           className="task-notes-panel"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <label
-                            htmlFor={`notes-${task.id}`}
-                            className="task-notes-label"
-                          >
-                            Notes
-                          </label>
-                          <textarea
-                            id={`notes-${task.id}`}
-                            value={task.notes || ""}
-                            onChange={(e) =>
-                              handleNoteChange(task.id, e.target.value)
-                            }
-                            placeholder="Type notes for this assignment..."
-                            className="task-note-input"
-                          />
-
-                          {renderSubtaskChecklist(task)}
+                          {renderExpandedTaskDetails(task, `notes-${task.id}`)}
                         </div>
                       )}
                     </li>
@@ -2623,18 +3907,15 @@ function App() {
                           Number(task.dueMonth) === date.getMonth() + 1 &&
                           Number(task.dueDay) === date.getDate(),
                       );
+                      const cycleDay = getCycleDayForDate(date, userSettings);
 
-                      return taskForDay ? (
-                        <div
-                          style={{
-                            width: 6,
-                            height: 6,
-                            borderRadius: "50%",
-                            backgroundColor: getCourseColor(taskForDay.course),
-                            margin: "0 auto",
-                            marginTop: 2,
-                          }}
-                        />
+                      return taskForDay || cycleDay ? (
+                        <div className="calendar-tile-details">
+                          {cycleDay && <span>{cycleDay}</span>}
+                          {taskForDay && (
+                            <i style={{ backgroundColor: getCourseColor(taskForDay.course) }} />
+                          )}
+                        </div>
                       ) : null;
                     }}
                   />
@@ -2642,6 +3923,24 @@ function App() {
                   <h4 style={{ marginTop: "20px" }}>
                     Assignments for {selectedDate.toDateString()}
                   </h4>
+
+                  <div className="calendar-day-summary">
+                    <strong>{selectedCycleDay || "No scheduled school cycle day"}</strong>
+                    {selectedCycleDay && (
+                      <p>
+                        Courses: {selectedCycleCourses.length > 0
+                          ? selectedCycleCourses.join(", ")
+                          : "No courses assigned"}
+                      </p>
+                    )}
+                    {selectedCycleDay && (
+                      <p>
+                        Scheduled-course assignments due: {selectedCycleCourseTasks.length > 0
+                          ? selectedCycleCourseTasks.map((task) => task.title).join(", ")
+                          : "None"}
+                      </p>
+                    )}
+                  </div>
 
                   {selectedDateTasks.length === 0 ? (
                     <p className="placeholder-text">
@@ -2705,24 +4004,10 @@ function App() {
                                 className="task-notes-panel"
                                 onClick={(e) => e.stopPropagation()}
                               >
-                                <label
-                                  htmlFor={`calendar-notes-${task.id}`}
-                                  className="task-notes-label"
-                                >
-                                  Notes
-                                </label>
-
-                                <textarea
-                                  id={`calendar-notes-${task.id}`}
-                                  value={task.notes || ""}
-                                  onChange={(e) =>
-                                    handleNoteChange(task.id, e.target.value)
-                                  }
-                                  placeholder="Type notes for this assignment..."
-                                  className="task-note-input"
-                                />
-
-                                {renderSubtaskChecklist(task)}
+                                {renderExpandedTaskDetails(
+                                  task,
+                                  `calendar-notes-${task.id}`,
+                                )}
                               </div>
                             )}
                           </li>
@@ -2772,36 +4057,33 @@ function App() {
               )}
             </div>
           )}
-          {/* SIGN IN: selects a browser-local username profile. */}
-          {currentTab === "signin" && (
-            <div className="card card-container" style={{ marginTop: "10px" }}>
-              <h3>🔐 Sign In</h3>
-              <form onSubmit={handleSignIn} className="card-form">
-                <input
-                  placeholder="Username"
-                  value={signInName}
-                  onChange={(e) => setSignInName(e.target.value)}
-                />
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  style={{ padding: "8px 12px", borderRadius: "4px" }}
-                >
-                  Sign In
-                </button>
-              </form>
-              <p className="hint-text">
-                Signing in will load and save assignments under your username in
-                local storage.
-              </p>
-            </div>
-          )}
-
           {/* SETTINGS: central home for appearance and future app preferences. */}
           {currentTab === "settings" && (
             <div className="card card-container" style={{ marginTop: "10px" }}>
-              <div className="settings-grid">
-                <section className="settings-section">
+              <div className="settings-layout">
+                <nav className="settings-sidebar" aria-label="Settings categories">
+                  <p className="eyebrow">Settings</p>
+                  {SETTINGS_SECTIONS.map((section) => (
+                    <button
+                      type="button"
+                      key={section.id}
+                      className={`settings-nav-button ${settingsSection === section.id ? "active" : ""}`}
+                      aria-current={settingsSection === section.id ? "page" : undefined}
+                      onClick={() => setSettingsSection(section.id)}
+                    >
+                      <strong>{section.label}</strong>
+                      <span>{section.description}</span>
+                    </button>
+                  ))}
+                </nav>
+                <div className="settings-content">
+                  <header className="settings-content-header">
+                    <p className="eyebrow">TaskCabinet Preferences</p>
+                    <h2>{activeSettingsSection.label}</h2>
+                    <p>{activeSettingsSection.description}</p>
+                  </header>
+                  <div className="settings-grid">
+                <section className="settings-section" hidden={settingsSection !== "personalization"}>
                   <h4>Appearance</h4>
                   <p className="hint-text">Currently using {theme} mode.</p>
                   <button
@@ -2811,9 +4093,197 @@ function App() {
                   >
                     Use {theme === "dark" ? "Light Mode" : "Dark Mode"}
                   </button>
+                  <label className="settings-select-row">
+                    <span>School level</span>
+                    <select
+                      value={userSettings.schoolLevel || "high"}
+                      onChange={(e) => handleAddFieldSettingChange("schoolLevel", e.target.value)}
+                    >
+                      <option value="middle">Middle School</option>
+                      <option value="high">High School</option>
+                      <option value="college">College</option>
+                    </select>
+                  </label>
                 </section>
 
-                <section className="settings-section">
+                <section className="settings-section color-studio-section" hidden={settingsSection !== "personalization"}>
+                  <div className="color-studio-header">
+                    <div>
+                      <h4>Full Color Studio</h4>
+                      <p className="hint-text">
+                        Personalize every major surface and action. Changes preview instantly and save to this profile.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => handleAddFieldSettingChange("customColors", {})}
+                    >
+                      Reset to {theme === "dark" ? "Dark" : "Light"} Defaults
+                    </button>
+                  </div>
+
+                  {[...new Set(COLOR_PERSONALIZATION_FIELDS.map((field) => field.group))].map((group) => (
+                    <div className="color-studio-group" key={group}>
+                      <h5>{group}</h5>
+                      <div className="color-control-grid">
+                        {COLOR_PERSONALIZATION_FIELDS.filter((field) => field.group === group).map((field) => {
+                          const value =
+                            userSettings.customColors?.[field.key] ||
+                            THEME_COLOR_DEFAULTS[theme][field.key];
+                          return (
+                            <label className="color-control" key={field.key}>
+                              <span>{field.label}</span>
+                              <div>
+                                <input
+                                  type="color"
+                                  value={value}
+                                  onChange={(e) => handleCustomColorChange(field.key, e.target.value)}
+                                  aria-label={`${field.label} color`}
+                                />
+                                <input
+                                  type="text"
+                                  value={value.toUpperCase()}
+                                  readOnly
+                                  aria-label={`${field.label} hex color`}
+                                />
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                  <div className="color-studio-group">
+                    <h5>Course and category badges</h5>
+                    <div className="color-control-grid">
+                      {[...new Set([...courses, "Work", "Personal"])].map((label) => (
+                        <label className="color-control" key={label}>
+                          <span>{label}</span>
+                          <div className="badge-color-control">
+                            <input
+                              type="color"
+                              value={getCourseColor(label)}
+                              onChange={(e) => handleCourseColorChange(label, e.target.value)}
+                              aria-label={`${label} badge color`}
+                            />
+                            <input type="text" value={getCourseColor(label).toUpperCase()} readOnly />
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </section>
+
+                <section className="settings-section" hidden={settingsSection !== "reminders"}>
+                  <h4>Install TaskCabinet</h4>
+                  <p className="hint-text">
+                    Install the planner as a desktop or home-screen app with offline access.
+                  </p>
+                  {isStandalone ? (
+                    <span className="settings-status-pill">Installed</span>
+                  ) : installPrompt ? (
+                    <button type="button" className="btn btn-primary" onClick={handleInstallApp}>
+                      Install App
+                    </button>
+                  ) : (
+                    <p className="hint-text">
+                      Use your browser’s “Install app” or “Add to Home Screen” menu.
+                    </p>
+                  )}
+                </section>
+
+                <section className="settings-section" hidden={settingsSection !== "reminders"}>
+                  <h4>Due Reminders</h4>
+                  <p className="hint-text">
+                    Browser reminders are checked while TaskCabinet is open.
+                  </p>
+                  <label className="settings-toggle">
+                    <span>Notifications</span>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(userSettings.notificationsEnabled)}
+                      onChange={(e) => handleNotificationSettingChange(e.target.checked)}
+                    />
+                  </label>
+                  <label className="settings-select-row">
+                    <span>Remind me</span>
+                    <select
+                      value={userSettings.reminderMinutes || 60}
+                      onChange={(e) => handleAddFieldSettingChange("reminderMinutes", Number(e.target.value))}
+                    >
+                      <option value={15}>15 minutes before</option>
+                      <option value={30}>30 minutes before</option>
+                      <option value={60}>1 hour before</option>
+                      <option value={180}>3 hours before</option>
+                      <option value={1440}>1 day before</option>
+                    </select>
+                  </label>
+                </section>
+
+                <section className="settings-section school-cycle-settings" hidden={settingsSection !== "cycle"}>
+                  <h4>School-Day Cycle</h4>
+                  <p className="hint-text">
+                    The anchor date uses the first label. Weekends are skipped automatically.
+                  </p>
+                  <label className="settings-select-row">
+                    <span>Anchor date</span>
+                    <input
+                      type="date"
+                      value={userSettings.cycleAnchorDate || ""}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        const date = value ? new Date(`${value}T00:00:00`) : null;
+                        if (date && (date.getDay() === 0 || date.getDay() === 6)) {
+                          alert("Choose a weekday as the first school-cycle day.");
+                          return;
+                        }
+                        handleAddFieldSettingChange("cycleAnchorDate", value);
+                      }}
+                    />
+                  </label>
+                  <div className="cycle-day-list">
+                    {(userSettings.cycleDayNames || ["A Day", "B Day"]).map((dayName) => (
+                      <span className="cycle-day-chip" key={dayName}>
+                        {dayName}
+                        <button type="button" onClick={() => handleRemoveCycleDay(dayName)} aria-label={`Remove ${dayName}`}>×</button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="cycle-day-add-row">
+                    <input
+                      value={newCycleDayName}
+                      onChange={(e) => setNewCycleDayName(e.target.value)}
+                      placeholder="e.g., C Day"
+                    />
+                    <button type="button" className="btn btn-secondary" onClick={handleAddCycleDay}>Add Day</button>
+                  </div>
+                  <div className="course-cycle-grid">
+                    {courses.map((course) => (
+                      <div className="course-cycle-row" key={course}>
+                        <strong>{course}</strong>
+                        <div>
+                          {(userSettings.cycleDayNames || ["A Day", "B Day"]).map((dayName) => {
+                            const assignedDays = userSettings.courseCycleDays?.[course];
+                            const isChecked = !Array.isArray(assignedDays) || assignedDays.includes(dayName);
+                            return (
+                              <label key={dayName}>
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={(e) => handleCourseCycleDayToggle(course, dayName, e.target.checked)}
+                                />
+                                {dayName}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="settings-section" hidden={settingsSection !== "assignments"}>
                   <h4>Add Assignment Fields</h4>
                   <p className="hint-text">
                     {currentUser
@@ -2862,7 +4332,7 @@ function App() {
                   </label>
                 </section>
 
-                <details className="settings-section settings-storage-section">
+                <details className="settings-section settings-storage-section" hidden={settingsSection !== "storage"}>
                   <summary>
                     <span>Archive</span>
                     <span className="settings-count">{archivedTasks.length}</span>
@@ -2896,7 +4366,7 @@ function App() {
                   </div>
                 </details>
 
-                <details className="settings-section settings-storage-section">
+                <details className="settings-section settings-storage-section" hidden={settingsSection !== "storage"}>
                   <summary>
                     <span>Trash</span>
                     <span className="settings-count">{trashTasks.length}</span>
@@ -2947,6 +4417,8 @@ function App() {
                     )}
                   </div>
                 </details>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -2992,9 +4464,21 @@ function App() {
               <div className="edit-main-layout">
                 <div className="edit-details-grid">
                   <div className="edit-field">
+                    <label>Category</label>
+                    <select
+                      value={getTaskCategory(editingTask)}
+                      onChange={(e) => handleEditFieldChange("category", e.target.value)}
+                    >
+                      {TASK_CATEGORIES.map((item) => (
+                        <option key={item} value={item}>{item}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="edit-field">
                     <label>Course</label>
                     <select
                       value={editingTask.course || "Other"}
+                      disabled={getTaskCategory(editingTask) !== "School"}
                       onChange={(e) =>
                         handleEditFieldChange("course", e.target.value)
                       }
@@ -3145,6 +4629,121 @@ function App() {
 
               <div className="edit-field edit-field-full edit-subtask-section">
                 <div>
+                  <label>Files</label>
+                  <p className="subtask-form-hint">Files stay in this browser and may be up to 10 MB each.</p>
+                </div>
+                <input
+                  type="file"
+                  multiple
+                  onChange={(e) => {
+                    handleFileSelection(e.target.files, setPendingEditFiles);
+                    e.target.value = "";
+                  }}
+                />
+                {[...getSafeAttachments(editingTask), ...pendingEditFiles.map((file, index) => ({
+                  id: `pending-${index}`,
+                  name: file.name,
+                  size: file.size,
+                  pendingIndex: index,
+                }))].map((attachment) => (
+                  <div className="attachment-draft-row" key={attachment.id}>
+                    <span>{attachment.name}</span>
+                    <button
+                      type="button"
+                      className="subtask-remove-button"
+                      onClick={() => {
+                        if (attachment.pendingIndex !== undefined) {
+                          setPendingEditFiles((prev) => prev.filter((_, index) => index !== attachment.pendingIndex));
+                        } else {
+                          setEditingTask((prev) => ({
+                            ...prev,
+                            attachments: getSafeAttachments(prev).filter((item) => item.id !== attachment.id),
+                          }));
+                          setRemovedEditAttachmentIds((prev) => [...prev, attachment.id]);
+                        }
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="edit-field edit-field-full edit-subtask-section">
+                <div>
+                  <label>Assignment Links</label>
+                  <p className="subtask-form-hint">Only http and https web links are accepted.</p>
+                </div>
+                <div className="link-form-row">
+                  <input
+                    type="text"
+                    placeholder="Link name"
+                    value={editLinkName}
+                    onChange={(e) => {
+                      setEditLinkName(e.target.value);
+                      setEditLinkMessage("");
+                    }}
+                    onBlur={handleAddEditLink}
+                  />
+                  <input
+                    type="text"
+                    placeholder="example.com/resource"
+                    value={editLinkUrl}
+                    onChange={(e) => {
+                      setEditLinkUrl(e.target.value);
+                      setEditLinkMessage("");
+                    }}
+                    onBlur={handleAddEditLink}
+                  />
+                </div>
+                <p
+                  className={`link-entry-feedback ${editLinkMessage ? (editLinkMessage.startsWith("Added") ? "success" : "error") : ""}`}
+                  role="status"
+                >
+                  {editLinkMessage || "Complete both fields, then leave the field to add the link automatically."}
+                </p>
+                {getSafeLinks(editingTask).map((link) => (
+                  <div className="edit-link-row" key={link.id}>
+                    <input
+                      value={link.name}
+                      onChange={(e) =>
+                        setEditingTask((prev) => ({
+                          ...prev,
+                          links: getSafeLinks(prev).map((item) =>
+                            item.id === link.id ? { ...item, name: e.target.value } : item,
+                          ),
+                        }))
+                      }
+                    />
+                    <input
+                      value={link.url}
+                      onChange={(e) =>
+                        setEditingTask((prev) => ({
+                          ...prev,
+                          links: getSafeLinks(prev).map((item) =>
+                            item.id === link.id ? { ...item, url: e.target.value } : item,
+                          ),
+                        }))
+                      }
+                    />
+                    <button
+                      type="button"
+                      className="subtask-remove-button"
+                      onClick={() =>
+                        setEditingTask((prev) => ({
+                          ...prev,
+                          links: getSafeLinks(prev).filter((item) => item.id !== link.id),
+                        }))
+                      }
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="edit-field edit-field-full edit-subtask-section">
+                <div>
                   <label>Checklist Steps</label>
                   <p className="subtask-form-hint">
                     Optional smaller steps that show up when the assignment card
@@ -3176,6 +4775,30 @@ function App() {
                   </button>
                 </div>
 
+                <div className="subtask-deadline-fields">
+                  <select value={editSubtaskDueMonth} onChange={(e) => setEditSubtaskDueMonth(e.target.value)}>
+                    <option value="">Optional month</option>
+                    {monthNames.map((month, index) => (
+                      <option key={month} value={String(index + 1).padStart(2, "0")}>{month}</option>
+                    ))}
+                  </select>
+                  <select value={editSubtaskDueDay} onChange={(e) => setEditSubtaskDueDay(e.target.value)}>
+                    <option value="">Day</option>
+                    {Array.from({ length: 31 }, (_, index) => index + 1).map((day) => (
+                      <option key={day} value={String(day).padStart(2, "0")}>{day}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    placeholder="Time, e.g. 4:30"
+                    value={editSubtaskDueHour}
+                    onChange={(e) => setEditSubtaskDueHour(e.target.value)}
+                  />
+                  <select value={editSubtaskDueAmPm} onChange={(e) => setEditSubtaskDueAmPm(e.target.value)}>
+                    <option value="AM">AM</option><option value="PM">PM</option>
+                  </select>
+                </div>
+
                 {getSafeSubtasks(editingTask).length > 0 ? (
                   <ul className="edit-subtask-list">
                     {getSafeSubtasks(editingTask).map((subtask) => (
@@ -3196,6 +4819,39 @@ function App() {
                             )
                           }
                         />
+
+                        <div className="edit-subtask-deadline-fields">
+                          <select
+                            value={subtask.dueMonth}
+                            onChange={(e) => handleEditSubtaskFieldChange(subtask.id, "dueMonth", e.target.value)}
+                          >
+                            <option value="">Month</option>
+                            {monthNames.map((month, index) => (
+                              <option key={month} value={String(index + 1).padStart(2, "0")}>{month}</option>
+                            ))}
+                          </select>
+                          <select
+                            value={subtask.dueDay}
+                            onChange={(e) => handleEditSubtaskFieldChange(subtask.id, "dueDay", e.target.value)}
+                          >
+                            <option value="">Day</option>
+                            {Array.from({ length: 31 }, (_, index) => index + 1).map((day) => (
+                              <option key={day} value={String(day).padStart(2, "0")}>{day}</option>
+                            ))}
+                          </select>
+                          <input
+                            type="text"
+                            placeholder="Time"
+                            value={subtask.dueHour}
+                            onChange={(e) => handleEditSubtaskFieldChange(subtask.id, "dueHour", e.target.value)}
+                          />
+                          <select
+                            value={subtask.dueAmPm}
+                            onChange={(e) => handleEditSubtaskFieldChange(subtask.id, "dueAmPm", e.target.value)}
+                          >
+                            <option value="AM">AM</option><option value="PM">PM</option>
+                          </select>
+                        </div>
 
                         <button
                           type="button"
@@ -3240,6 +4896,108 @@ function App() {
                 onClick={handleEditSave}
               >
                 Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {copyingTask && (
+        <div className="modal-backdrop" onClick={() => setCopyingTask(null)}>
+          <div className="edit-modal copy-dates-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="edit-modal-header">
+              <div>
+                <p className="eyebrow modal-eyebrow">Copy Assignment</p>
+                <h2>Copy “{copyingTask.title}” to dates</h2>
+              </div>
+              <button type="button" className="modal-close-button" onClick={() => setCopyingTask(null)}>×</button>
+            </div>
+            <p className="hint-text">
+              Dates are saved as month/day and repeat annually. Select as many
+              dates as needed; existing copies in this assignment group are skipped.
+            </p>
+            <div className="copy-cycle-toolbar">
+              <label>
+                <span>Cycle-day filter</span>
+                <select
+                  value={copyCycleFilter}
+                  disabled={!userSettings.cycleAnchorDate}
+                  onChange={(e) => setCopyCycleFilter(e.target.value)}
+                >
+                  <option value="ALL">All days</option>
+                  {(userSettings.cycleDayNames || ["A Day", "B Day"]).map((dayName) => (
+                    <option key={dayName} value={dayName}>{dayName}</option>
+                  ))}
+                </select>
+                {!userSettings.cycleAnchorDate && (
+                  <small>Set a weekday anchor date in School Cycle settings to enable filters.</small>
+                )}
+              </label>
+              {copyCycleFilter !== "ALL" && (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={handleSelectAllVisibleCycleDates}
+                >
+                  Select All Visible {copyCycleFilter} Dates
+                </button>
+              )}
+            </div>
+            <Calendar
+              activeStartDate={copyCalendarStart}
+              onClickDay={handleCopyDateToggle}
+              onActiveStartDateChange={({ activeStartDate }) => {
+                if (activeStartDate) setCopyCalendarStart(activeStartDate);
+              }}
+              tileContent={({ date, view }) => {
+                if (view !== "month") return null;
+                const cycleDay = getCycleDayForDate(date, userSettings);
+                return cycleDay ? <span className="copy-cycle-day-label">{cycleDay}</span> : null;
+              }}
+              tileDisabled={({ date, view }) =>
+                view === "month" &&
+                copyCycleFilter !== "ALL" &&
+                getCycleDayForDate(date, userSettings) !== copyCycleFilter
+              }
+              tileClassName={({ date, view }) => {
+                const key = `${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+                const classNames = [];
+                if (copyDates.some((item) => item.key === key)) {
+                  classNames.push("copy-date-selected");
+                }
+                if (view === "month" && copyCycleFilter !== "ALL") {
+                  classNames.push(
+                    getCycleDayForDate(date, userSettings) === copyCycleFilter
+                      ? "copy-cycle-match"
+                      : "copy-cycle-muted",
+                  );
+                }
+                return classNames.join(" ");
+              }}
+            />
+            <div className="copy-date-selection">
+              <strong>Selected dates ({copyDates.length})</strong>
+              {copyDates.length === 0 ? (
+                <p>None</p>
+              ) : (
+                Object.entries(
+                  copyDates.reduce((groups, item) => {
+                    const group = item.cycleDay || "No cycle day";
+                    return { ...groups, [group]: [...(groups[group] || []), item] };
+                  }, {}),
+                ).map(([cycleDay, dates]) => (
+                  <p key={cycleDay}>
+                    <strong>{cycleDay}:</strong>{" "}
+                    {dates
+                      .map(({ month, day }) => `${monthNames[Number(month) - 1]} ${Number(day)}`)
+                      .join(", ")}
+                  </p>
+                ))
+              )}
+            </div>
+            <div className="edit-modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setCopyingTask(null)}>Cancel</button>
+              <button type="button" className="btn btn-primary" disabled={copyDates.length === 0} onClick={handleCopyConfirm}>
+                Create Copies
               </button>
             </div>
           </div>

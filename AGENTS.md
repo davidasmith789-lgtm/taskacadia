@@ -1,7 +1,7 @@
-# TaskAcadia Project Instructions
+# TaskCabinet Project Instructions
 
 ## Project Overview
-TaskAcadia is a React + Vite assignment planner for students. It helps users organize school assignments by course, due date, priority, estimated time, repeat frequency, notes, and completion status.
+TaskCabinet is a React + Vite assignment planner for students. It helps users organize school assignments by course, due date, priority, estimated time, repeat frequency, notes, and completion status.
 
 ## Current Tech Stack
 - React
@@ -18,7 +18,7 @@ TaskAcadia is a React + Vite assignment planner for students. It helps users org
 - `package.json` contains dependencies and scripts.
 
 ## Current Features
-TaskAcadia currently includes:
+TaskCabinet currently includes:
 - Add assignments
 - Complete assignments
 - Undo completed assignments
@@ -55,7 +55,7 @@ TaskAcadia currently includes:
 - Keep the app beginner-friendly and easy to maintain.
 
 ## Style Goals
-TaskAcadia should feel like a clean, modern student productivity dashboard.
+TaskCabinet should feel like a clean, modern student productivity dashboard.
 
 The design should be:
 - Professional

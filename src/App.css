@@ -1,5 +1,5 @@
 /*
-  TASKACADIA STYLESHEET GUIDE
+  TASKCABINET STYLESHEET GUIDE
 
   CSS controls how the JSX in App.jsx looks. A selector such as .task-card
   targets an element whose JSX contains className="task-card". Properties inside
@@ -14,7 +14,7 @@
   - Rules later in the file can refine earlier rules with the same selector.
 
   The first section contains the original shared foundations. The later
-  "TaskAcadia Layout Upgrade" section adds the current dashboard design. Both
+  "TaskCabinet Layout Upgrade" section adds the current dashboard design. Both
   layers remain because a few original variables and behaviors are still used.
 */
 
@@ -238,7 +238,7 @@ body,
    -------------------------------------------------------------------------- */
 
 /* react-calendar supplies its own class names; these rules make the third-party
-   calendar match TaskAcadia in both light and dark themes. */
+   calendar match TaskCabinet in both light and dark themes. */
 .react-calendar {
   width: 100%;
   max-width: 500px;
@@ -319,7 +319,7 @@ html[data-theme="light"] .react-calendar {
   color: #111827;
 }
 /* ============================================================================
-   CURRENT TASKACADIA DASHBOARD DESIGN
+   CURRENT TASKCABINET DASHBOARD DESIGN
    ============================================================================
 
    This layer introduces the modern page background, cards, shadows, responsive
@@ -704,6 +704,479 @@ button:disabled {
   .btn {
     width: 100%;
   }
+}
+
+/* Checklist deadlines, assignment resources, date copying, and local auth. */
+.subtask-deadline-fields,
+.edit-subtask-deadline-fields,
+.link-form-row,
+.edit-link-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  align-items: center;
+}
+
+.link-form-row,
+.edit-link-row {
+  grid-template-columns: minmax(130px, 0.8fr) minmax(180px, 1.4fr) auto;
+}
+
+.subtask-deadline-fields { margin-top: 10px; }
+.edit-subtask-deadline-fields { grid-column: 2 / -2; }
+
+.subtask-deadline {
+  display: block;
+  margin-left: 28px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.task-resource-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.65fr);
+  gap: 18px;
+}
+
+.task-resource-column { min-width: 0; }
+.task-link-list { margin: 8px 0 0; padding-left: 20px; }
+.task-link-list a { color: #2563eb; overflow-wrap: anywhere; }
+.copy-dates-button { margin-top: 12px; }
+
+.copy-result-banner {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin: 12px 0;
+  padding: 12px 16px;
+  border: 1px solid #60a5fa;
+  border-radius: 10px;
+  background: rgb(59 130 246 / 12%);
+}
+
+.copy-result-banner button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.copy-dates-modal .react-calendar { margin: 18px auto; }
+.react-calendar__tile.copy-date-selected {
+  background: #2563eb !important;
+  color: white !important;
+  border-radius: 8px;
+}
+.copy-date-selection { font-weight: 600; }
+
+.auth-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.auth-card {
+  width: min(100%, 480px);
+  padding: 30px;
+  border: 1px solid var(--border-color, #dbe3ef);
+  border-radius: 18px;
+  background: var(--card-bg, white);
+  box-shadow: 0 24px 70px rgb(15 23 42 / 18%);
+}
+
+.auth-mode-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 24px 0 16px;
+}
+
+.auth-form .btn { margin-top: 10px; padding: 11px 16px; }
+.auth-error { margin: 4px 0; color: #dc2626; font-weight: 700; }
+.auth-warning {
+  margin-top: 20px;
+  padding: 14px;
+  border: 1px solid #f59e0b;
+  border-radius: 10px;
+  background: rgb(245 158 11 / 12%);
+}
+.auth-warning p { margin: 6px 0 0; color: var(--text-muted); font-size: 0.9rem; }
+
+@media (max-width: 700px) {
+  .subtask-deadline-fields,
+  .edit-subtask-deadline-fields,
+  .link-form-row,
+  .edit-link-row,
+  .task-resource-grid {
+    grid-template-columns: 1fr;
+  }
+  .edit-subtask-deadline-fields { grid-column: 1 / -1; }
+}
+
+.settings-select-row {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.settings-status-pill,
+.cycle-day-chip {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgb(34 197 94 / 14%);
+  color: #15803d;
+  font-weight: 700;
+}
+
+.school-level-middle .hero-card { border-top: 5px solid #22c55e; }
+.school-level-high .hero-card { border-top: 5px solid #3b82f6; }
+.school-level-college .hero-card { border-top: 5px solid #8b5cf6; }
+
+.school-cycle-settings { grid-column: 1 / -1; }
+.cycle-day-list,
+.cycle-day-add-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.cycle-day-chip {
+  background: rgb(59 130 246 / 14%);
+  color: inherit;
+}
+
+.cycle-day-chip button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.cycle-day-add-row input { flex: 1 1 180px; }
+.course-cycle-grid { display: grid; gap: 10px; margin-top: 18px; }
+.course-cycle-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.5fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  padding: 10px;
+  border: 1px solid var(--border-color, #dbe3ef);
+  border-radius: 9px;
+}
+.course-cycle-row > div { display: flex; flex-wrap: wrap; gap: 10px; }
+.course-cycle-row label { display: inline-flex; gap: 5px; align-items: center; }
+
+.calendar-tile-details {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  font-size: 0.58rem;
+  line-height: 1;
+}
+.calendar-tile-details i { width: 6px; height: 6px; border-radius: 50%; }
+.calendar-day-summary {
+  margin: 10px 0 16px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgb(59 130 246 / 10%);
+}
+.calendar-day-summary p { margin: 5px 0 0; }
+
+.task-attachments-panel {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color, #dbe3ef);
+}
+.attachment-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #2563eb;
+  cursor: pointer;
+  text-align: left;
+  text-decoration: underline;
+}
+.attachment-draft-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color, #dbe3ef);
+  border-radius: 8px;
+}
+
+@media (max-width: 650px) {
+  .course-cycle-row { grid-template-columns: 1fr; }
+  .attachment-draft-row { align-items: stretch; flex-direction: column; }
+}
+
+/* ==========================================================================
+   PROFILE COLOR STUDIO
+   Every major interface role resolves through these tokens. Profile-specific
+   values are applied to the root element by App.jsx and override theme defaults.
+   ========================================================================== */
+:root {
+  --surface-alt: #ebeff3;
+  --input-bg: #ffffff;
+  --nav-bg: #ffffff;
+  --task-bg: #ffffff;
+  --modal-bg: #ffffff;
+  --primary-color: #4f46e5;
+  --secondary-color: #e5e7eb;
+  --secondary-text: #111827;
+  --success-color: #16a34a;
+  --warning-color: #f59e0b;
+  --danger-color: #dc2626;
+  --danger-text: #ffffff;
+  --link-color: #2563eb;
+  --focus-color: #6366f1;
+  --calendar-bg: #ffffff;
+  --calendar-text: #111827;
+  --calendar-selected: #2563eb;
+  --calendar-today: #dbeafe;
+  --hero-start: #4f46e5;
+  --hero-middle: #7c3aed;
+  --hero-end: #2563eb;
+  --hero-text: #ffffff;
+  --backdrop-color: #020617;
+  --accent-gradient: linear-gradient(135deg, var(--hero-start), var(--hero-middle), var(--hero-end));
+}
+
+html[data-theme="dark"] {
+  --surface-alt: #1f2937;
+  --input-bg: #111827;
+  --nav-bg: #151b2e;
+  --task-bg: #151b2e;
+  --modal-bg: #151b2e;
+  --primary-color: #60a5fa;
+  --secondary-color: #334155;
+  --secondary-text: #ffffff;
+  --success-color: #22c55e;
+  --warning-color: #facc15;
+  --danger-color: #ef4444;
+  --danger-text: #ffffff;
+  --link-color: #60a5fa;
+  --focus-color: #818cf8;
+  --calendar-bg: #111827;
+  --calendar-text: #f9fafb;
+  --calendar-selected: #2563eb;
+  --calendar-today: #4b5563;
+  --hero-start: #312e81;
+  --hero-middle: #581c87;
+  --hero-end: #1e3a8a;
+  --hero-text: #ffffff;
+  --backdrop-color: #020617;
+}
+
+body,
+html,
+#root,
+.App {
+  background-color: var(--page-bg);
+  color: var(--text-color);
+}
+
+body {
+  background-image:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--primary-color) 18%, transparent), transparent 35%),
+    radial-gradient(circle at top right, color-mix(in srgb, var(--hero-end) 14%, transparent), transparent 30%);
+}
+
+.hero-card {
+  background: var(--accent-gradient);
+  color: var(--hero-text);
+  border-color: var(--focus-color) !important;
+}
+.hero-card .app-title,
+.hero-card .hero-subtitle,
+.hero-card .eyebrow,
+.hero-card .user-pill { color: var(--hero-text); }
+.hero-card .user-pill {
+  background: color-mix(in srgb, var(--hero-text) 16%, transparent);
+  border-color: color-mix(in srgb, var(--hero-text) 30%, transparent);
+}
+
+.tab-row { background: color-mix(in srgb, var(--nav-bg) 88%, transparent) !important; }
+.tab-button { color: var(--muted-text); }
+.tab-button.active {
+  background: var(--accent-gradient);
+  color: var(--hero-text);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--primary-color) 30%, transparent);
+}
+
+.card,
+.card-container,
+.panel-card,
+.stat-card,
+.recommended-plan-card,
+.settings-section,
+.filter-bar,
+.filter-controls-card,
+.auth-card {
+  background: var(--card-bg);
+  color: var(--text-color);
+  border-color: var(--border-color);
+}
+
+.task-card { background: var(--task-bg); color: var(--text-color); }
+.task-card-high {
+  background: var(--priority-high-bg);
+  border-left-color: var(--danger-color);
+}
+.task-card:hover,
+.filter-bar:hover { border-color: var(--focus-color); }
+
+.subtask-checklist-panel,
+.subtask-form-section,
+.edit-subtask-section,
+.edit-details-grid,
+.edit-notes-side,
+.calendar-day-summary,
+.copy-result-banner,
+.course-cycle-row,
+.attachment-draft-row,
+.edit-checkbox {
+  background: color-mix(in srgb, var(--surface-alt) 82%, transparent) !important;
+  color: var(--text-color);
+  border-color: var(--border-color) !important;
+}
+
+input:not([type="color"]):not([type="checkbox"]):not([type="radio"]),
+select,
+textarea,
+.task-note-input,
+.App input[type="text"],
+.App input[type="number"] {
+  background: var(--input-bg);
+  color: var(--text-color);
+  border-color: var(--border-color);
+}
+input:focus,
+select:focus,
+textarea:focus {
+  outline-color: color-mix(in srgb, var(--focus-color) 55%, transparent);
+  border-color: var(--focus-color);
+}
+
+.btn-primary,
+.btn-primary:hover { background: var(--primary-color); color: var(--button-primary-color); }
+.btn-secondary,
+.btn-secondary:hover,
+html[data-theme="dark"] .btn-secondary,
+html[data-theme="dark"] .btn-secondary:hover {
+  background: var(--secondary-color);
+  color: var(--secondary-text);
+}
+.btn-warning,
+.btn-warning:hover { background: var(--warning-color); color: var(--button-warning-color); }
+.btn-danger,
+.btn-danger:hover { background: var(--danger-color); color: var(--danger-text); }
+.settings-status-pill { background: color-mix(in srgb, var(--success-color) 16%, transparent); color: var(--success-color); }
+.in-progress-status-pill { background: color-mix(in srgb, var(--warning-color) 18%, transparent); color: var(--warning-color); }
+
+a,
+.task-link-list a,
+.attachment-link { color: var(--link-color); }
+.auth-error,
+.modal-close-button:hover { color: var(--danger-color); }
+.auth-warning {
+  border-color: var(--warning-color);
+  background: color-mix(in srgb, var(--warning-color) 14%, var(--card-bg));
+}
+.copy-result-banner {
+  border-color: var(--primary-color) !important;
+  background: color-mix(in srgb, var(--primary-color) 12%, var(--card-bg)) !important;
+}
+
+.modal-backdrop { background: color-mix(in srgb, var(--backdrop-color) 76%, transparent); }
+.edit-modal { background: var(--modal-bg); color: var(--text-color); border-color: var(--border-color); }
+
+html[data-theme] .react-calendar {
+  background: var(--calendar-bg);
+  color: var(--calendar-text);
+  border-color: var(--border-color);
+}
+html[data-theme] .react-calendar__navigation button,
+html[data-theme] .react-calendar__tile {
+  background: var(--calendar-bg);
+  color: var(--calendar-text);
+}
+html[data-theme] .react-calendar__navigation button:hover,
+html[data-theme] .react-calendar__tile:hover {
+  background: color-mix(in srgb, var(--calendar-selected) 22%, var(--calendar-bg));
+  color: var(--calendar-text);
+}
+html[data-theme] .react-calendar__tile--active,
+.react-calendar__tile.copy-date-selected {
+  background: var(--calendar-selected) !important;
+  color: var(--button-primary-color) !important;
+}
+html[data-theme] .react-calendar__tile--now { background: var(--calendar-today); color: var(--calendar-text); }
+html[data-theme] .react-calendar__month-view__weekdays,
+html[data-theme] .react-calendar__month-view__weekdays abbr { color: var(--muted-text); }
+
+.color-studio-section { grid-column: 1 / -1; }
+.color-studio-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+}
+.color-studio-header h4 { margin-bottom: 4px; }
+.color-studio-group {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-color);
+}
+.color-studio-group h5 { margin: 0 0 10px; font-size: 0.92rem; color: var(--muted-text); }
+.color-control-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(205px, 1fr));
+  gap: 10px;
+}
+.color-control {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-alt) 70%, transparent);
+  font-weight: 700;
+}
+.color-control > div {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 8px;
+}
+.color-control input[type="color"] {
+  width: 48px;
+  height: 42px;
+  padding: 2px;
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  background: var(--input-bg);
+  cursor: pointer;
+}
+.color-control input[type="text"] {
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+@media (max-width: 650px) {
+  .color-studio-header { flex-direction: column; }
+  .color-studio-header .btn { width: 100%; }
 }
 
 /* ============================
@@ -1617,4 +2090,232 @@ html[data-theme="dark"] .subtask-checklist-panel {
   .subtask-checklist-header {
     flex-direction: column;
   }
+}
+
+/* Final color-studio precedence: these rules intentionally come last so older
+   component-specific polish cannot override a user's saved palette. */
+.btn-primary,
+.btn-primary:hover { background: var(--primary-color) !important; color: var(--button-primary-color) !important; }
+.btn-secondary,
+.btn-secondary:hover,
+html[data-theme] .btn-secondary,
+html[data-theme] .btn-secondary:hover {
+  background: var(--secondary-color) !important;
+  color: var(--secondary-text) !important;
+}
+.btn-warning,
+.btn-warning:hover { background: var(--warning-color) !important; color: var(--button-warning-color) !important; }
+.btn-danger,
+.btn-danger:hover { background: var(--danger-color) !important; color: var(--danger-text) !important; }
+
+.subtask-form-section,
+.edit-subtask-section,
+.subtask-checklist-panel,
+html[data-theme] .subtask-form-section,
+html[data-theme] .edit-subtask-section,
+html[data-theme] .subtask-checklist-panel,
+.edit-details-grid,
+html[data-theme] .edit-details-grid,
+.edit-notes-side,
+html[data-theme] .edit-notes-side,
+.edit-checkbox {
+  background: color-mix(in srgb, var(--surface-alt) 82%, transparent) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-color) !important;
+}
+.subtask-draft-item,
+.edit-subtask-item,
+.subtask-checklist-item { background: var(--task-bg); border-color: var(--border-color); }
+.subtask-remove-button {
+  background: color-mix(in srgb, var(--danger-color) 14%, transparent);
+  color: var(--danger-color);
+}
+.subtask-remove-button:hover { background: var(--danger-color); color: var(--danger-text); }
+
+.recommended-plan-count,
+html[data-theme] .recommended-plan-count {
+  background: color-mix(in srgb, var(--primary-color) 14%, transparent);
+  color: var(--primary-color);
+}
+.recommended-plan-item {
+  background: color-mix(in srgb, var(--surface-alt) 72%, transparent);
+  border-color: var(--border-color);
+}
+.recommended-plan-item:hover { border-color: var(--focus-color); }
+.recommended-plan-button:focus-visible { outline-color: var(--focus-color); }
+.recommended-plan-rank { background: var(--accent-gradient); color: var(--hero-text); }
+.in-progress-task-card { border-left-color: var(--primary-color); }
+.in-progress-status-pill,
+html[data-theme] .in-progress-status-pill {
+  background: color-mix(in srgb, var(--warning-color) 18%, transparent);
+  color: var(--warning-color);
+}
+
+.modal-backdrop { background: color-mix(in srgb, var(--backdrop-color) 76%, transparent) !important; }
+.edit-modal { background: var(--modal-bg) !important; color: var(--text-color); }
+.task-card { background: var(--task-bg) !important; }
+.task-card-high { background: var(--priority-high-bg) !important; border-left-color: var(--danger-color) !important; }
+.tab-row { background: color-mix(in srgb, var(--nav-bg) 88%, transparent) !important; }
+.hero-card { background: var(--accent-gradient) !important; color: var(--hero-text) !important; }
+
+html[data-theme] .react-calendar,
+html[data-theme] .react-calendar__navigation button,
+html[data-theme] .react-calendar__tile {
+  background-color: var(--calendar-bg) !important;
+  color: var(--calendar-text) !important;
+  border-color: var(--border-color) !important;
+}
+html[data-theme] .react-calendar__navigation button:hover,
+html[data-theme] .react-calendar__tile:hover {
+  background-color: color-mix(in srgb, var(--calendar-selected) 22%, var(--calendar-bg)) !important;
+}
+html[data-theme] .react-calendar__tile--active,
+html[data-theme] .react-calendar__tile.copy-date-selected {
+  background-color: var(--calendar-selected) !important;
+  color: var(--button-primary-color) !important;
+}
+html[data-theme] .react-calendar__tile--now {
+  background-color: var(--calendar-today) !important;
+  color: var(--calendar-text) !important;
+}
+
+a,
+.task-link-list a,
+.attachment-link { color: var(--link-color) !important; }
+
+/* Settings category navigation and refined link/copy-date workflows. */
+.settings-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.settings-sidebar {
+  position: sticky;
+  top: 18px;
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 18px;
+  background: var(--nav-bg);
+  box-shadow: var(--shadow-card);
+}
+
+.settings-sidebar .eyebrow {
+  margin: 2px 6px 6px;
+  color: var(--muted-text);
+}
+
+.settings-nav-button {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-color);
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-nav-button span {
+  color: var(--muted-text);
+  font-size: 0.76rem;
+  line-height: 1.3;
+}
+
+.settings-nav-button:hover {
+  border-color: var(--focus-color);
+  background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+}
+
+.settings-nav-button.active {
+  border-color: var(--primary-color);
+  background: color-mix(in srgb, var(--primary-color) 15%, var(--nav-bg));
+}
+
+.settings-nav-button.active strong { color: var(--primary-color); }
+.settings-content { min-width: 0; }
+.settings-content-header {
+  margin-bottom: 16px;
+  padding: 4px 4px 14px;
+  border-bottom: 1px solid var(--border-color);
+}
+.settings-content-header .eyebrow { color: var(--muted-text); }
+.settings-content-header h2 { margin: 0; color: var(--text-color); }
+.settings-content-header > p:last-child { margin: 6px 0 0; color: var(--muted-text); }
+.settings-section[hidden] { display: none !important; }
+
+.link-form-row,
+.edit-link-row {
+  grid-template-columns: minmax(140px, 0.8fr) minmax(190px, 1.4fr);
+}
+
+.link-entry-feedback {
+  min-height: 1.25em;
+  margin: 7px 0 0;
+  color: var(--muted-text);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.link-entry-feedback.success { color: var(--success-color); }
+.link-entry-feedback.error { color: var(--warning-color); }
+.copy-cycle-toolbar small { color: var(--muted-text); font-weight: 500; }
+
+.copy-cycle-toolbar {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 0 4px;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-alt) 78%, transparent);
+}
+.copy-cycle-toolbar label { display: grid; gap: 6px; font-weight: 800; }
+.copy-cycle-day-label {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted-text);
+  font-size: 0.56rem;
+  font-weight: 800;
+  line-height: 1;
+}
+html[data-theme] .react-calendar__tile.copy-cycle-match {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary-color) 45%, transparent);
+}
+html[data-theme] .react-calendar__tile.copy-cycle-muted,
+html[data-theme] .react-calendar__tile.copy-cycle-muted:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
+.copy-date-selection {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-alt) 70%, transparent);
+}
+.copy-date-selection p { margin: 6px 0 0; }
+
+@media (max-width: 850px) {
+  .settings-layout { grid-template-columns: 1fr; }
+  .settings-sidebar {
+    position: static;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .settings-sidebar .eyebrow { grid-column: 1 / -1; }
+}
+
+@media (max-width: 600px) {
+  .settings-sidebar { grid-template-columns: 1fr; }
+  .settings-sidebar .eyebrow { grid-column: auto; }
+  .copy-cycle-toolbar { align-items: stretch; flex-direction: column; }
+  .copy-cycle-toolbar .btn { width: 100%; }
+  .link-form-row,
+  .edit-link-row { grid-template-columns: 1fr; }
 }
